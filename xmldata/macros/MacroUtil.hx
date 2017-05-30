@@ -56,6 +56,8 @@ class MacroUtil
 		return switch (e.expr)
 		{
 			case EConst(CString(s)), EConst(CIdent(s)): s;
+			case EField(e, field):
+				return ident(e) + "." + field;
 			default: null;
 		}
 	}

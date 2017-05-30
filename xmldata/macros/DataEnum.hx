@@ -142,7 +142,7 @@ class DataEnum
 		var nodeCount:Int = 0;
 		for (fast in fasts)
 		{
-			for (node in fast.nodes.resolve(nodeName))
+			for (node in getNodes(fast, nodeName))
 			{
 				++nodeCount;
 				var id:String = node.has.id ? node.att.id : nodeName + (++autoId);
@@ -290,23 +290,10 @@ class DataEnum
 	{
 		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
 
-		function findSingleValue():Null<String>
+		inline function findSingleValue()
 		{
-			for (fieldName in fieldNames)
-			{
-				if (node.has.resolve(fieldName))
-				{
-					return node.att.resolve(fieldName);
-				}
-				else if (node.hasNode.resolve(fieldName))
-				{
-					var childNode = node.node.resolve(fieldName);
-					if (childNode.has.value) return childNode.att.value;
-					else if (childNode.innerHTML.length > 0) return childNode.innerHTML;
-					else return null;
-				}
-			}
-			return null;
+			var values = findValues(node, fieldNames);
+			return values.length > 0 ? values[0] : null;
 		}
 
 		switch (t)
@@ -316,24 +303,8 @@ class DataEnum
 				case "String":
 					return findSingleValue();
 				case "Array":
-					var values:Array<Dynamic> = new Array();
 					var pt = params[0];
-					for (fieldName in fieldNames)
-					{
-						if (node.has.resolve(fieldName))
-						{
-							for (val in node.att.resolve(fieldName).split(","))
-							{
-								values.push(getValue(pt, val));
-							}
-						}
-						for (childNode in node.nodes.resolve(fieldName))
-						{
-							var val = childNode.has.value ? childNode.att.value : childNode.innerHTML;
-							values.push(getValue(pt, val));
-						}
-					}
-					return values;
+					return [for (value in findValues(node, fieldNames)) getValue(pt, value)];
 				case "haxe.ds.StringMap":
 					var values:Map<String, Dynamic> = new Map();
 					var pt = params[0];
@@ -366,6 +337,43 @@ class DataEnum
 				if (val == null) return null;
 				else return getValue(t, val);
 		}
+	}
+
+	static function findValues(node:Fast, fieldNames:Array<String>):Array<String>
+	{
+		var values:Array<String> = new Array();
+		for (fieldName in fieldNames)
+		{
+			if (fieldName.indexOf(".") > -1)
+			{
+				var parts = fieldName.split("."),
+					rest = parts.slice(1).join(".");
+				for (node in getNodes(node, parts[0]))
+				{
+					for (value in findValues(node, [rest]))
+					{
+						values.push(value);
+					}
+				}
+				continue;
+			}
+			while (StringTools.startsWith(fieldName, '^'))
+			{
+				fieldName = fieldName.substr(1);
+				node = new Fast(node.x.parent);
+			}
+			if (node.has.resolve(fieldName))
+			{
+				values.push(node.att.resolve(fieldName));
+			}
+			else if (node.hasNode.resolve(fieldName))
+			{
+				var childNode = node.node.resolve(fieldName);
+				if (childNode.has.value) values.push(childNode.att.value);
+				else if (childNode.innerHTML.length > 0) values.push(childNode.innerHTML);
+			}
+		}
+		return values;
 	}
 
 	static function getValue(t:Type, s:String):Dynamic
@@ -424,5 +432,16 @@ class DataEnum
 			case FVar(t, e): e;
 			default: throw "Unsupported field type: " + field;
 		}
+	}
+
+	static function getNodes(fast:Fast, nodeName:String):Array<Fast>
+	{
+		if (nodeName.indexOf(".") > -1)
+		{
+			var parts = nodeName.split(".");
+			var rest = parts.slice(1).join(".");
+			return [for (child in fast.nodes.resolve(parts[0])) for (node in getNodes(child, rest)) node];
+		}
+		else return [for (node in fast.nodes.resolve(nodeName)) node];
 	}
 }
