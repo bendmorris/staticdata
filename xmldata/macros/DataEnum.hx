@@ -292,7 +292,7 @@ class DataEnum
 
 		inline function findSingleValue()
 		{
-			var values = findValues(node, fieldNames);
+			var values = findValues(node, fieldNames, false);
 			return values.length > 0 ? values[0] : null;
 		}
 
@@ -304,7 +304,7 @@ class DataEnum
 					return findSingleValue();
 				case "Array":
 					var pt = params[0];
-					return [for (value in findValues(node, fieldNames)) getValue(pt, value)];
+					return [for (value in findValues(node, fieldNames, true)) getValue(pt, value)];
 				case "haxe.ds.StringMap":
 					var values:Map<String, Dynamic> = new Map();
 					var pt = params[0];
@@ -339,7 +339,7 @@ class DataEnum
 		}
 	}
 
-	static function findValues(node:Fast, fieldNames:Array<String>):Array<String>
+	static function findValues(node:Fast, fieldNames:Array<String>, array:Bool=false):Array<String>
 	{
 		var values:Array<String> = new Array();
 		for (fieldName in fieldNames)
@@ -350,7 +350,7 @@ class DataEnum
 					rest = parts.slice(1).join(".");
 				for (node in getNodes(node, parts[0]))
 				{
-					for (value in findValues(node, [rest]))
+					for (value in findValues(node, [rest], array))
 					{
 						values.push(value);
 					}
@@ -364,13 +364,19 @@ class DataEnum
 			}
 			if (node.has.resolve(fieldName))
 			{
-				values.push(node.att.resolve(fieldName));
+				if (array)
+				{
+					for (v in node.att.resolve(fieldName).split(",")) values.push(v);
+				}
+				else values.push(node.att.resolve(fieldName));
 			}
 			else if (node.hasNode.resolve(fieldName))
 			{
-				var childNode = node.node.resolve(fieldName);
-				if (childNode.has.value) values.push(childNode.att.value);
-				else if (childNode.innerHTML.length > 0) values.push(childNode.innerHTML);
+				for (childNode in node.nodes.resolve(fieldName))
+				{
+					if (childNode.has.value) values.push(childNode.att.value);
+					else if (childNode.innerHTML.length > 0) values.push(childNode.innerHTML);
+				}
 			}
 		}
 		return values;
