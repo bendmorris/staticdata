@@ -212,11 +212,22 @@ class DataEnum
 			pos: Context.currentPos(),
 		});
 
+		var arrayIndexAdded:Bool = false;
 		for (field in xmlFields.keys())
 		{
 			var fieldType = getFieldType(field);
 			var defaultValue = getFieldDefaultValue(field);
-			var mapField = "__" + field.name;
+			var vals:Map<String, Dynamic> = values[field];
+			if (defaultValue == null)
+			{
+				for (v in ordered)
+				{
+					if (!vals.exists(v))
+					{
+						throw 'missing field ${field.name} for value $v, and no default value is specified';
+					}
+				}
+			}
 
 			newFields.push({
 				name: field.name,
@@ -227,38 +238,137 @@ class DataEnum
 				pos: field.pos,
 			});
 
-			var vals:Map<String, Dynamic> = values[field];
-			newFields.push({
-				name: mapField,
-				doc: null,
-				meta: [],
-				access: [AStatic],
-				kind: FVar(TPath({name: "Map", pack: [], params: [TPType(abstractComplexType), TPType(fieldType)], sub: null}), (
-					[for (v in vals) v].length > 0 ? vals.toExpr(field.pos) : macro new Map()
-				)),
-				pos: field.pos,
-			});
+			var useMap = useMap(fieldType),
+				valCount = Lambda.count(vals),
+				sparse = valCount > 128 && valCount < Math.sqrt(ordered.length);
+			if (useMap && sparse)
+			{
+				// for sparse objects, use a Map
+				var mapField = "__" + field.name;
+				newFields.push({
+					name: mapField,
+					doc: null,
+					meta: [],
+					access: [AStatic],
+					kind: FVar(TPath({name: "Map", pack: [], params: [TPType(abstractComplexType), TPType(fieldType)], sub: null}), (
+						[for (v in vals) v].length > 0 ? vals.toExpr(field.pos) : macro new Map()
+					)),
+					pos: field.pos,
+				});
+				newFields.push({
+					name: "get_" + field.name,
+					doc: null,
+					meta: [],
+					access: [AInline],
+					kind: FFun({
+						args: [],
+						expr:
+						(defaultValue == null) ?
+						macro {
+							return $i{mapField}[this];
+						} :
+						macro {
+							return $i{mapField}.exists(this) ? $i{mapField}[this] : ${defaultValue};
+						},
+						params: null,
+						ret: fieldType,
+					}),
+					pos: field.pos,
+				});
+			}
+			else if (useMap)
+			{
+				// for non-sparse keys use an Array lookup
+				if (!arrayIndexAdded)
+				{
+					// add the index
+					arrayIndexAdded = true;
+					newFields.push({
+						name: "__dataIndex",
+						doc: null,
+						meta: [],
+						access: [],
+						kind: FProp("get", "never", macro : Int, null),
+						pos: Context.currentPos(),
+					});
+					var indexGetter = EReturn(ESwitch(
+						macro this,
+						[for (i in 0 ... ordered.length) {
+							values: [ordered[i].toExpr()],
+							expr: macro $v{i},
+						}],
+						defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
+					).at(Context.currentPos())).at(Context.currentPos());
+					newFields.push({
+						name: "get___dataIndex",
+						doc: null,
+						meta: [],
+						access: [],
+						kind: FFun({
+							args: [],
+							expr: indexGetter,
+							params: null,
+							ret: macro : Int,
+						}),
+						pos: Context.currentPos(),
+					});
+				}
+				var mapField = "__" + field.name;
+				newFields.push({
+					name: mapField,
+					doc: null,
+					meta: [],
+					access: [AStatic],
+					kind: FVar(TPath({name: "Array", pack: [], params: [TPType(fieldType)], sub: null}), (
+						EArrayDecl([
+							for (v in ordered) vals.exists(v) ? vals[v].toExpr(field.pos) : defaultValue
+						]).at(field.pos)
+					)),
+					pos: field.pos,
+				});
+				newFields.push({
+					name: "get_" + field.name,
+					doc: null,
+					meta: [],
+					access: [AInline],
+					kind: FFun({
+						args: [],
+						expr:
+						macro {
+							return $i{mapField}[__dataIndex];
+						},
+						params: null,
+						ret: fieldType,
+					}),
+					pos: field.pos,
+				});
+			}
+			else
+			{
+				// for simple types, use a switch
+				var getter = EReturn(ESwitch(
+					macro this,
+					[for (v in vals.keys()) {
+						values: [v.toExpr()],
+						expr: vals[v].toExpr(field.pos),
+					}],
+					defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
+				).at(field.pos)).at(field.pos);
 
-			newFields.push({
-				name: "get_" + field.name,
-				doc: null,
-				meta: [],
-				access: [AInline],
-				kind: FFun({
-					args: [],
-					expr:
-					(defaultValue == null) ?
-					macro {
-						return $i{mapField}[this];
-					} :
-					macro {
-						return $i{mapField}.exists(this) ? $i{mapField}[this] : ${defaultValue};
-					},
-					params: null,
-					ret: fieldType,
-				}),
-				pos: field.pos,
-			});
+				newFields.push({
+					name: "get_" + field.name,
+					doc: null,
+					meta: [],
+					access: [],
+					kind: FFun({
+						args: [],
+						expr: getter,
+						params: null,
+						ret: fieldType,
+					}),
+					pos: field.pos,
+				});
+			}
 		}
 
 		for (field in indexes.keys())
@@ -449,5 +559,16 @@ class DataEnum
 			return [for (child in fast.nodes.resolve(parts[0])) for (node in getNodes(child, rest)) node];
 		}
 		else return [for (node in fast.nodes.resolve(nodeName)) node];
+	}
+
+	static function useMap(ct:ComplexType)
+	{
+		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
+
+		return switch (TypeTools.toString(t))
+		{
+			case "String", "Int", "UInt", "Float", "Bool": false;
+			default: true;
+		}
 	}
 }
