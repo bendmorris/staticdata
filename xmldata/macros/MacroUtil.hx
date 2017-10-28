@@ -77,10 +77,10 @@ class MacroUtil
 				return at(EConst(CString(v)), p);
 			case "haxe.ds.StringMap", "haxe.ds.IntMap":
 				var m:Map<Dynamic, Dynamic> = cast v;
-				return at(EArrayDecl([
+				return Lambda.count(v) > 0 ? at(EArrayDecl([
 					for (value in m.keys())
 					macro $v{value} => ${toExpr(m[value], p)}
-				]), p);
+				]), p) : at((macro new Map()).expr, p);
 			default: return Context.makeExpr(v, p);
 		}
 	}

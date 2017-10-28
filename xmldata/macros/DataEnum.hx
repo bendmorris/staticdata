@@ -200,7 +200,7 @@ class DataEnum
 			throw "No valid nodes found for DataEnum " + abstractType.name;
 		}
 
-		newFields.push({
+		newFields.insert(0, {
 			name: "ordered",
 			doc: null,
 			meta: [],
