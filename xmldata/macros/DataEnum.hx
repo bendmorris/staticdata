@@ -2,10 +2,11 @@ package xmldata.macros;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.macro.ExprTools;
 import haxe.macro.Type;
-import haxe.xml.Fast;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
+import haxe.xml.Fast;
 using xmldata.macros.MacroUtil;
 
 typedef IndexDef = {
@@ -13,6 +14,9 @@ typedef IndexDef = {
 	var items:Array<String>;
 }
 
+/**
+ * Used to define an enum abstract with variants from an XML data file.
+ */
 class DataEnum
 {
 	public static function build()
@@ -346,11 +350,18 @@ class DataEnum
 			else
 			{
 				// for simple types, use a switch
+				var dupes:Map<String, Array<String>> = new Map();
+				for (key in vals.keys())
+				{
+					var val = ExprTools.toString(vals[key].toExpr(field.pos));
+					if (!dupes.exists(val)) dupes[val] = new Array();
+					dupes[val].push(key);
+				}
 				var getter = EReturn(ESwitch(
 					macro this,
-					[for (v in vals.keys()) {
-						values: [v.toExpr()],
-						expr: vals[v].toExpr(field.pos),
+					[for (v in dupes.keys()) {
+						values: [for (key in dupes[v]) key.toExpr()],
+						expr: Context.parse(v, field.pos),
 					}],
 					defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
 				).at(field.pos)).at(field.pos);
