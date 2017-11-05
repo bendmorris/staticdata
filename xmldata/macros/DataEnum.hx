@@ -1,5 +1,6 @@
 package xmldata.macros;
 
+import haxe.io.Path;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
@@ -7,7 +8,9 @@ import haxe.macro.Type;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
 import haxe.xml.Fast;
+import sys.FileSystem;
 using xmldata.macros.MacroUtil;
+using StringTools;
 
 typedef IndexDef = {
 	var value:Dynamic;
@@ -19,11 +22,12 @@ typedef IndexDef = {
  */
 class DataEnum
 {
-	public static function build()
+	public static function build(?dataFiles:Array<String>, ?nodeName:String)
 	{
 		var fields = Context.getBuildFields();
 		var newFields:Array<Field> = new Array();
 
+		// figure out what type we're building
 		var type = Context.getLocalType();
 		var meta:MetaAccess,
 			typeName:String,
@@ -45,13 +49,10 @@ class DataEnum
 		}
 		var abstractComplexType = TPath({name: typeName, pack: abstractType.pack, params: null});
 
-		var dataFiles:Array<String> = new Array();
+		// find the data files to parse
+		if (dataFiles == null) dataFiles = new Array();
 		var pathMeta = meta.extract(":dataPath");
-		if (pathMeta.length == 0)
-		{
-			throw "Missing @:dataPath on DataEnum " + abstractType.name;
-		}
-		else
+		if (pathMeta.length > 0)
 		{
 			for (m in pathMeta)
 			{
@@ -61,30 +62,53 @@ class DataEnum
 				else throw "Bad @:dataPath on DataEnum " + abstractType.name + ": " + p[0].expr;
 			}
 		}
-		var nodeName:String;
-		var nodeNameMeta = meta.extract(":dataNode");
-		if (nodeNameMeta.length == 0) nodeName = typeName.snakeCase();
-		else
+		if (nodeName == null)
 		{
-			for (m in nodeNameMeta)
+			var nodeNameMeta = meta.extract(":dataNode");
+			if (nodeNameMeta.length == 0) nodeName = typeName.snakeCase();
+			else
 			{
-				var p = m.params;
-				if (p == null) throw "Empty @:dataNode on DataEnum " + abstractType.name;
-				nodeName = p[0].ident();
-				break;
+				for (m in nodeNameMeta)
+				{
+					var p = m.params;
+					if (p == null) throw "Empty @:dataNode on DataEnum " + abstractType.name;
+					nodeName = p[0].ident();
+					break;
+				}
 			}
 		}
 
 		var fasts:Array<Fast> = new Array();
 		for (dataFile in dataFiles)
 		{
-			var data = sys.io.File.getContent(Context.resolvePath(dataFile));
-			var xml = Xml.parse(data);
-			fasts.push(new Fast(xml.firstElement()));
+			var paths:Array<String>;
+			if (dataFile.indexOf("*") > -1)
+			{
+				paths = expandPath(Path.normalize(dataFile));
+			}
+			else paths = [dataFile];
+			for (path in paths)
+			{
+				#if debug
+				trace('${abstractType.name}: parsing data from $path');
+				#end
+				var data = sys.io.File.getContent(Context.resolvePath(path));
+				var xml = Xml.parse(data);
+				fasts.push(new Fast(xml.firstElement()));
+			}
+		}
+		if (fasts.length == 0)
+		{
+			throw "No data files specified for DataEnum " + abstractType.name + "; search paths: " + dataFiles.join(", ");
 		}
 
-		var indexFields:Map<Field, Array<String>> = new Map();
+		// find the fields to generate
+		// these fields will generate read-only fields with getters to retrieve the value for each variant
 		var xmlFields:Map<Field, Array<String>> = new Map();
+		// fields marked with @:inlineField will always use a switch with the getter inlined
+		var inlineFields:Map<Field, Bool> = new Map();
+		// fields marked with @:index will build index maps based on the specified attribute
+		var indexFields:Map<Field, Array<String>> = new Map();
 		for (field in fields)
 		{
 			var isSpecialField:Bool = false;
@@ -127,6 +151,11 @@ class DataEnum
 					addIndexName(field.name.camelCase());
 					addIndexName(field.name.snakeCase());
 					indexFields[field] = indexNames;
+				}
+				else if (m.name == ':inlineField')
+				{
+					if (!xmlFields.exists(field)) throw '@:inlineField field needs a @:a tag first (${abstractType.name}::${field.name})';
+					inlineFields[field] = true;
 				}
 			}
 			if (!isSpecialField)
@@ -242,7 +271,8 @@ class DataEnum
 				pos: field.pos,
 			});
 
-			var useMap = useMap(fieldType),
+			var isInline = inlineFields.exists(field),
+				useMap = !isInline && useMap(fieldType),
 				valCount = Lambda.count(vals),
 				sparse = valCount > 128 && valCount < Math.sqrt(ordered.length);
 			if (useMap && sparse)
@@ -349,7 +379,7 @@ class DataEnum
 			}
 			else
 			{
-				// for simple types, use a switch
+				// for simple or inline types, use a switch
 				var dupes:Map<String, Array<String>> = new Map();
 				for (key in vals.keys())
 				{
@@ -370,7 +400,7 @@ class DataEnum
 					name: "get_" + field.name,
 					doc: null,
 					meta: [],
-					access: [],
+					access: isInline ? [AInline] : [],
 					kind: FFun({
 						args: [],
 						expr: getter,
@@ -433,8 +463,8 @@ class DataEnum
 					{
 						for (att in node.x.attributes())
 						{
-							if (StringTools.startsWith(att, fieldName + ":") ||
-								StringTools.startsWith(att, fieldName + "-"))
+							if (att.startsWith(fieldName + ":") ||
+								att.startsWith(fieldName + "-"))
 							{
 								var key = att.substr(fieldName.length + 1);
 								var val = node.att.resolve(att);
@@ -478,7 +508,7 @@ class DataEnum
 				}
 				continue;
 			}
-			while (StringTools.startsWith(fieldName, '^'))
+			while (fieldName.startsWith('^'))
 			{
 				fieldName = fieldName.substr(1);
 				node = new Fast(node.x.parent);
@@ -581,5 +611,40 @@ class DataEnum
 			case "String", "Int", "UInt", "Float", "Bool": false;
 			default: true;
 		}
+	}
+
+	static function expandPath(path:String, root:String=""):Array<String>
+	{
+		var parts = path.split("/");
+		var result = new Array();
+		var lastIsLiteral:Bool = true;
+		while (parts.length > 0)
+		{
+			var curPart = parts.shift();
+			if (curPart.indexOf("*") > -1)
+			{
+				var re = new EReg("^" + curPart.replace(".", "\\.").replace("*", ".*") + "$", "g");
+				var contents = FileSystem.readDirectory(root);
+				for (path in contents)
+				{
+					if (re.match(path))
+					{
+						for (r in expandPath(root + "/" + path, parts.join("/")))
+						{
+							result.push(r);
+						}
+					}
+				}
+				lastIsLiteral = false;
+			}
+			else
+			{
+				if (root != "") root += "/";
+				root += curPart;
+				lastIsLiteral = true;
+			}
+		}
+		if (lastIsLiteral) result.push(root);
+		return result;
 	}
 }
