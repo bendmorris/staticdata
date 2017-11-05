@@ -1,4 +1,4 @@
-package xmldata.macros;
+package hxdata.macros;
 
 import haxe.io.Path;
 import haxe.macro.Context;
@@ -9,7 +9,7 @@ import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
 import haxe.xml.Fast;
 import sys.FileSystem;
-using xmldata.macros.MacroUtil;
+using hxdata.macros.MacroUtil;
 using StringTools;
 
 typedef IndexDef = {
@@ -84,7 +84,7 @@ class DataEnum
 			var paths:Array<String>;
 			if (dataFile.indexOf("*") > -1)
 			{
-				paths = expandPath(Path.normalize(dataFile));
+				paths = Utils.findFiles(Path.normalize(dataFile));
 			}
 			else paths = [dataFile];
 			for (path in paths)
@@ -109,6 +109,8 @@ class DataEnum
 		var inlineFields:Map<Field, Bool> = new Map();
 		// fields marked with @:index will build index maps based on the specified attribute
 		var indexFields:Map<Field, Array<String>> = new Map();
+		// one or more processing functions which will be called on the value
+		var fieldProcessors:Map<Field, Array<Expr>> = new Map();
 		for (field in fields)
 		{
 			var isSpecialField:Bool = false;
@@ -131,10 +133,10 @@ class DataEnum
 					addFieldName(field.name.camelCase());
 					addFieldName(field.name.snakeCase());
 					xmlFields[field] = fieldNames;
-					break;
 				}
 				else if (m.name == ':index')
 				{
+					if (xmlFields.exists(field)) throw '@:index field cannot have a @:a tag (${abstractType.name}::${field.name})';
 					isSpecialField = true;
 					var indexNames:Array<String> = new Array();
 					inline function addIndexName(s:String)
@@ -151,11 +153,23 @@ class DataEnum
 					addIndexName(field.name.camelCase());
 					addIndexName(field.name.snakeCase());
 					indexFields[field] = indexNames;
+					break;
 				}
 				else if (m.name == ':inlineField')
 				{
 					if (!xmlFields.exists(field)) throw '@:inlineField field needs a @:a tag first (${abstractType.name}::${field.name})';
 					inlineFields[field] = true;
+				}
+				else if (m.name == ':f')
+				{
+					if (!fieldProcessors.exists(field))
+					{
+						fieldProcessors[field] = new Array();
+					}
+					for (p in m.params)
+					{
+						fieldProcessors[field].push(p);
+					}
 				}
 			}
 			if (!isSpecialField)
@@ -387,11 +401,26 @@ class DataEnum
 					if (!dupes.exists(val)) dupes[val] = new Array();
 					dupes[val].push(key);
 				}
+				inline function process(expr:Expr)
+				{
+					if (fieldProcessors.exists(field))
+					{
+						for (fieldProcessor in fieldProcessors[field])
+						{
+							expr = ECall(fieldProcessor, [expr]).at(field.pos);
+						}
+						return expr;
+					}
+					else
+					{
+						return expr;
+					}
+				}
 				var getter = EReturn(ESwitch(
 					macro this,
 					[for (v in dupes.keys()) {
 						values: [for (key in dupes[v]) key.toExpr()],
-						expr: Context.parse(v, field.pos),
+						expr: process(Context.parse(v, field.pos)),
 					}],
 					defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
 				).at(field.pos)).at(field.pos);
@@ -611,40 +640,5 @@ class DataEnum
 			case "String", "Int", "UInt", "Float", "Bool": false;
 			default: true;
 		}
-	}
-
-	static function expandPath(path:String, root:String=""):Array<String>
-	{
-		var parts = path.split("/");
-		var result = new Array();
-		var lastIsLiteral:Bool = true;
-		while (parts.length > 0)
-		{
-			var curPart = parts.shift();
-			if (curPart.indexOf("*") > -1)
-			{
-				var re = new EReg("^" + curPart.replace(".", "\\.").replace("*", ".*") + "$", "g");
-				var contents = FileSystem.readDirectory(root);
-				for (path in contents)
-				{
-					if (re.match(path))
-					{
-						for (r in expandPath(root + "/" + path, parts.join("/")))
-						{
-							result.push(r);
-						}
-					}
-				}
-				lastIsLiteral = false;
-			}
-			else
-			{
-				if (root != "") root += "/";
-				root += curPart;
-				lastIsLiteral = true;
-			}
-		}
-		if (lastIsLiteral) result.push(root);
-		return result;
 	}
 }

@@ -1,4 +1,5 @@
-xmldata is a simple helper to create Haxe values from XML at compile time.
+hxdata is a simple helper to create Haxe values from structured data files (such 
+as XML) at compile time.
 
 To use, define the structure of your XML data in an abstract using the @:a 
 metadata on fields:
@@ -6,7 +7,7 @@ metadata on fields:
 ```
 @:dataPath("data/dogs.xml")
 @:dataNode("breed")
-@:build(xmldata.macros.DataEnum.build())
+@:build(hxdata.macros.DataEnum.build())
 @:enum
 abstract DogBreed(String) from String to String
 {

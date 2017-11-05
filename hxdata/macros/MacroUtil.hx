@@ -1,6 +1,5 @@
-package xmldata.macros;
+package hxdata.macros;
 
-#if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
 
@@ -91,4 +90,3 @@ class MacroUtil
 		return {expr: expr, pos: p};
 	}
 }
-#end
