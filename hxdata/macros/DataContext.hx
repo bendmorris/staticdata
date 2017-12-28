@@ -18,29 +18,34 @@ typedef IndexDef = {
 
 class DataContext
 {
-	public static function getValue(t:Type, s:String):Value
+	public static function getValue(t:Type, s:Dynamic):Value
 	{
-		if (s.startsWith("`") && s.endsWith("`"))
+		if (Std.is(s, String))
 		{
-			return LazyValue(s.substr(1, s.length - 2));
-		}
-		else
-		{
-			t = TypeTools.followWithAbstracts(t);
-			return ConcreteValue(switch (TypeTools.toString(t))
+			var s:String = cast s;
+			if (s.startsWith("`") && s.endsWith("`"))
 			{
-				case "String": s;
-				case "Int", "UInt": Std.parseInt(s);
-				case "Float": Std.parseFloat(s);
-				case "Bool": switch (s)
+				return LazyValue(s.substr(1, s.length - 2));
+			}
+			else
+			{
+				t = TypeTools.followWithAbstracts(t);
+				return ConcreteValue(switch (TypeTools.toString(t))
 				{
-					case "true": true;
-					case "false": false;
-					default: throw "Unsupported Bool value " + s;
-				};
-				default: throw "Unsupported value type: " + TypeTools.toString(t);
-			});
+					case "String": s;
+					case "Int", "UInt": Std.parseInt(s);
+					case "Float": Std.parseFloat(s);
+					case "Bool": switch (s)
+					{
+						case "true": true;
+						case "false": false;
+						default: throw "Unsupported Bool value " + s;
+					};
+					default: throw "Unsupported value type: " + TypeTools.toString(t);
+				});
+			}
 		}
+		else return ConcreteValue(s);
 	}
 
 	public static function getFieldType(field:Field):ComplexType

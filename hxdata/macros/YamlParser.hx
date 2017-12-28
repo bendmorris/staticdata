@@ -85,16 +85,16 @@ class YamlParser implements DataParser
 		}
 	}
 
-	static function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:AnyObjectMap, ?parents:Array<AnyObjectMap>):Null<Value>
+	static function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:AnyObjectMap):Null<Value>
 	{
 		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
 
 		function findSingleValue()
 		{
 			var f = find(node, fieldNames);
-			if (f != null)
+			if (f.length > 0)
 			{
-				return DataContext.getValue(t, Std.string(f));
+				return DataContext.getValue(t, f[0]);
 			}
 			return null;
 		}
@@ -114,7 +114,7 @@ class YamlParser implements DataParser
 					{
 						for (v in vals)
 						{
-							values.push(DataContext.getValue(pt, Std.string(v)));
+							values.push(DataContext.getValue(pt, v));
 						}
 					}
 					return ArrayValue(values);
@@ -122,13 +122,14 @@ class YamlParser implements DataParser
 				case "haxe.ds.StringMap":
 					var values:Map<String, Value> = new Map();
 					var pt = params[0];
-					var map:AnyObjectMap = cast find(node, fieldNames);
-					if (map != null)
+					var val = find(node, fieldNames)[0];
+					if (val != null)
 					{
+						var map:AnyObjectMap = cast val;
 						for (key in map.keys())
 						{
 							if (key == "__parent") continue;
-							values[key] = DataContext.getValue(pt, Std.string(map.get(key)));
+							values[key] = DataContext.getValue(pt, map.get(key));
 						}
 					}
 					return MapValue(values);
@@ -141,8 +142,9 @@ class YamlParser implements DataParser
 		}
 	}
 
-	static function find(node:AnyObjectMap, fieldNames:Array<String>):Dynamic
+	static function find(node:AnyObjectMap, fieldNames:Array<String>):Array<Dynamic>
 	{
+		var values:Array<Dynamic> = new Array();
 		for (fieldName in fieldNames)
 		{
 			if (fieldName.indexOf(".") > -1)
@@ -151,7 +153,10 @@ class YamlParser implements DataParser
 					rest = parts.slice(1).join(".");
 				for (node in getNodes(node, parts[0]))
 				{
-					return find(node, [rest]);
+					for (value in find(node, [rest]))
+					{
+						values.push(value);
+					}
 				}
 			}
 			while (fieldName.startsWith('^') && node != null)
@@ -161,10 +166,15 @@ class YamlParser implements DataParser
 			}
 			if (node != null && node.exists(fieldName))
 			{
-				return node.get(fieldName);
+				if (Std.is(node.get(fieldName), Array))
+				{
+					var a:Array<Dynamic> = cast node.get(fieldName);
+					for (val in a) values.push(val);
+				}
+				else values.push(node.get(fieldName));
 			}
 		}
-		return null;
+		return values;
 	}
 
 	static function getNodes(node:AnyObjectMap, nodeName:String):Array<AnyObjectMap>
