@@ -5,7 +5,11 @@ import haxe.macro.Expr;
 
 class MacroUtil
 {
-	public static var enumMeta:Metadata = [{pos:Context.currentPos(), name:":enum"}];
+	public static var enumMeta(get, never):Metadata;
+	static inline function get_enumMeta():Metadata
+	{
+		return [{pos:Context.currentPos(), name:":enum"}];
+	}
 	static var _ids:Map<String, Map<String, Bool>> = new Map();
 
 	public static function titleCase(str:String)
@@ -63,6 +67,10 @@ class MacroUtil
 
 	public static function toExpr(v:Dynamic, ?p:Position):Expr
 	{
+		if (Std.is(v, Value))
+		{
+			throw "Can't coerce a Value to an Expr this way. You probably meant to use ValueTools.valToExpr.";
+		}
 		var cls = std.Type.getClass(v);
 		if (cls == null) return Context.makeExpr(v, p);
 		switch (std.Type.getClassName(cls))

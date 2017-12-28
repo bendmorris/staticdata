@@ -8,12 +8,13 @@ import haxe.macro.Type;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
 import haxe.xml.Fast;
-import sys.FileSystem;
+import hxdata.Value;
 using hxdata.macros.MacroUtil;
+using hxdata.macros.ValueTools;
 using StringTools;
 
 typedef IndexDef = {
-	var value:Dynamic;
+	var value:Value;
 	var items:Array<String>;
 }
 
@@ -26,6 +27,7 @@ class DataEnum
 	{
 		var fields = Context.getBuildFields();
 		var newFields:Array<Field> = new Array();
+		var pos = Context.currentPos();
 
 		// figure out what type we're building
 		var type = Context.getLocalType();
@@ -182,7 +184,7 @@ class DataEnum
 		var indexes:Map<Field, Array<IndexDef>> = [
 			for (field in indexFields.keys()) field => new Array()
 		];
-		var values:Map<Field, Map<String, Dynamic>> = [
+		var values:Map<Field, Map<String, Value>> = [
 			for (field in xmlFields.keys()) field => new Map()
 		];
 		var autoId:Int = 0;
@@ -193,6 +195,13 @@ class DataEnum
 			{
 				++nodeCount;
 				var id:String = node.has.id ? node.att.id : nodeName + (++autoId);
+				switch (getValue(ComplexTypeTools.toType(macro :String), id))
+				{
+					case ConcreteValue(s): {}
+					default:
+						throw 'Id field must contain only concrete values; found "$id"';
+				}
+
 				var name = id.titleCase();
 				var value = node.has.value ? node.att.value : id;
 				ordered.push(value);
@@ -202,7 +211,7 @@ class DataEnum
 					meta: MacroUtil.enumMeta,
 					access: [],
 					kind: FVar(abstractComplexType, macro $v{value}),
-					pos: Context.currentPos(),
+					pos: pos,
 				});
 
 				for (field in xmlFields.keys())
@@ -223,7 +232,7 @@ class DataEnum
 						var added:Bool = false;
 						for (indexDef in indexes[field])
 						{
-							if (indexDef.value == val)
+							if (indexDef.value.valToStr() == val.valToStr())
 							{
 								indexDef.items.push(value);
 								added = true;
@@ -256,7 +265,7 @@ class DataEnum
 				TPath({name: "Array", pack: [], params: [TPType(abstractComplexType)], sub: null}),
 				ordered.toExpr()
 			),
-			pos: Context.currentPos(),
+			pos: pos,
 		});
 
 		var arrayIndexAdded:Bool = false;
@@ -264,7 +273,7 @@ class DataEnum
 		{
 			var fieldType = getFieldType(field);
 			var defaultValue = getFieldDefaultValue(field);
-			var vals:Map<String, Dynamic> = values[field];
+			var vals:Map<String, Value> = values[field];
 			if (defaultValue == null)
 			{
 				for (v in ordered)
@@ -299,7 +308,7 @@ class DataEnum
 					meta: [],
 					access: [AStatic],
 					kind: FVar(TPath({name: "Map", pack: [], params: [TPType(abstractComplexType), TPType(fieldType)], sub: null}), (
-						[for (v in vals) v].length > 0 ? vals.toExpr(field.pos) : macro new Map()
+						MapValue(vals).valToExpr(field.pos)
 					)),
 					pos: field.pos,
 				});
@@ -337,7 +346,7 @@ class DataEnum
 						meta: [],
 						access: [],
 						kind: FProp("get", "never", macro : Int, null),
-						pos: Context.currentPos(),
+						pos: pos,
 					});
 					var indexGetter = EReturn(ESwitch(
 						macro this,
@@ -346,7 +355,7 @@ class DataEnum
 							expr: macro $v{i},
 						}],
 						defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
-					).at(Context.currentPos())).at(Context.currentPos());
+					).at(pos)).at(pos);
 					newFields.push({
 						name: "get___dataIndex",
 						doc: null,
@@ -358,7 +367,7 @@ class DataEnum
 							params: null,
 							ret: macro : Int,
 						}),
-						pos: Context.currentPos(),
+						pos: pos,
 					});
 				}
 				var mapField = "__" + field.name;
@@ -369,7 +378,7 @@ class DataEnum
 					access: [AStatic],
 					kind: FVar(TPath({name: "Array", pack: [], params: [TPType(fieldType)], sub: null}), (
 						EArrayDecl([
-							for (v in ordered) vals.exists(v) ? vals[v].toExpr(field.pos) : defaultValue
+							for (v in ordered) vals.exists(v) ? vals[v].valToExpr(field.pos) : defaultValue
 						]).at(field.pos)
 					)),
 					pos: field.pos,
@@ -397,7 +406,7 @@ class DataEnum
 				var dupes:Map<String, Array<String>> = new Map();
 				for (key in vals.keys())
 				{
-					var val = ExprTools.toString(vals[key].toExpr(field.pos));
+					var val = ExprTools.toString(vals[key].valToExpr(field.pos));
 					if (!dupes.exists(val)) dupes[val] = new Array();
 					dupes[val].push(key);
 				}
@@ -457,7 +466,7 @@ class DataEnum
 					], sub: null}),
 					(EArrayDecl([
 						for (indexDef in index)
-						macro ${indexDef.value.toExpr()} => ${indexDef.items.toExpr()}
+						macro ${indexDef.value.valToExpr(field.pos)} => ${indexDef.items.toExpr()}
 					])).at(field.pos)),
 				pos: field.pos,
 			});
@@ -466,7 +475,7 @@ class DataEnum
 		return newFields;
 	}
 
-	static function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:Fast):Null<Dynamic>
+	static function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:Fast):Null<Value>
 	{
 		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
 
@@ -481,12 +490,13 @@ class DataEnum
 			case TInst(c, params): switch (c.toString())
 			{
 				case "String":
-					return findSingleValue();
+					var v = findSingleValue();
+					return v == null ? null : getValue(t, v);
 				case "Array":
 					var pt = params[0];
-					return [for (value in findValues(node, fieldNames, true)) getValue(pt, value)];
+					return ArrayValue([for (value in findValues(node, fieldNames, true)) getValue(pt, value)]);
 				case "haxe.ds.StringMap":
-					var values:Map<String, Dynamic> = new Map();
+					var values:Map<String, Value> = new Map();
 					var pt = params[0];
 					for (fieldName in fieldNames)
 					{
@@ -502,20 +512,19 @@ class DataEnum
 						}
 						for (childNode in node.nodes.resolve(fieldName))
 						{
-							var key = childNode.att.type;
+							var key = findOneOf(childNode, ["key", "type"]);
 							var val = childNode.has.value ? childNode.att.value : childNode.innerHTML;
 							values[key] = getValue(pt, val);
 						}
 					}
-					return values;
+					return MapValue(values);
 				default:
 					throw "Unsupported value type: " + TypeTools.toString(t);
 			}
 
 			default:
 				var val = findSingleValue();
-				if (val == null) return null;
-				else return getValue(t, val);
+				return (val == null) ? null : getValue(t, val);
 		}
 	}
 
@@ -562,21 +571,28 @@ class DataEnum
 		return values;
 	}
 
-	static function getValue(t:Type, s:String):Dynamic
+	static function getValue(t:Type, s:String):Value
 	{
-		t = TypeTools.followWithAbstracts(t);
-		return switch (TypeTools.toString(t))
+		if (s.startsWith("`") && s.endsWith("`"))
 		{
-			case "String": s;
-			case "Int", "UInt": Std.parseInt(s);
-			case "Float": Std.parseFloat(s);
-			case "Bool": switch (s)
+			return LazyValue(s.substr(1, s.length - 2));
+		}
+		else
+		{
+			t = TypeTools.followWithAbstracts(t);
+			return ConcreteValue(switch (TypeTools.toString(t))
 			{
-				case "true": true;
-				case "false": false;
-				default: throw "Unsupported Bool value " + s;
-			};
-			default: throw "Unsupported value type: " + TypeTools.toString(t);
+				case "String": s;
+				case "Int", "UInt": Std.parseInt(s);
+				case "Float": Std.parseFloat(s);
+				case "Bool": switch (s)
+				{
+					case "true": true;
+					case "false": false;
+					default: throw "Unsupported Bool value " + s;
+				};
+				default: throw "Unsupported value type: " + TypeTools.toString(t);
+			});
 		}
 	}
 
@@ -640,5 +656,17 @@ class DataEnum
 			case "String", "Int", "UInt", "Float", "Bool": false;
 			default: true;
 		}
+	}
+
+	static function findOneOf(node:Fast, atts:Array<String>)
+	{
+		for (att in atts)
+		{
+			if (node.has.resolve(att))
+			{
+				return node.att.resolve(att);
+			}
+		}
+		throw "Couldn't find a supported attribute (" + atts.join(", ") + ")";
 	}
 }

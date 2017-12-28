@@ -1,9 +1,9 @@
 {
-	"name": "xmldata",
-	"url" : "https://github.com/bendmorris/haxeml",
+	"name": "hxdata",
+	"url" : "https://github.com/bendmorris/hxdata",
 	"license": "MIT",
 	"tags": [],
-	"description": "XML to Haxe objects at compile time.",
+	"description": "Convert structured data to Haxe enum abstracts at compile time.",
 	"version": "0.1.0",
 	"releasenote": "Initial release.",
 	"contributors": ["bendmorris"]
