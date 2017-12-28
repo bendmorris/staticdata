@@ -1,13 +1,11 @@
 hxdata is a simple helper to create Haxe values from structured data files (such 
 as XML) at compile time.
 
-To use, define the structure of your XML data in an abstract using the @:a 
-metadata on fields:
+To use, define the structure of your data in an abstract using the @:a metadata 
+on fields:
 
 ```
-@:dataPath("data/dogs.xml")
-@:dataNode("breed")
-@:build(hxdata.macros.DataEnum.build())
+@:build(hxdata.macros.DataEnum.build(["data/dogs.xml"], "breed"))
 @:enum
 abstract DogBreed(String) from String to String
 {
@@ -22,7 +20,7 @@ abstract DogBreed(String) from String to String
 
 The corresponding XML file:
 
-```
+```xml
 <dogs>
     <breed id="husky" name="Siberian Husky" color="0xc0c0c0">
         <synonym>Giant Wolfdog</synonym>
@@ -31,6 +29,19 @@ The corresponding XML file:
         <stat type="obedience">1</stat>
     </breed>
 </dogs>
+```
+
+Or YAML:
+
+```yaml
+breed:
+  - id: husky
+    name: Siberian Husky
+    color: 0xc0c0c0
+    synonym: ["Giant Wolfdog", "Big Fluffy Guy"]
+    stat:
+      strength: 10
+      obedience: 1
 ```
 
 Now you can access these values as @:enum abstracts in your code, with the 

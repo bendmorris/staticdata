@@ -1,0 +1,20 @@
+{
+	"test_parent": {
+		"id": "json_parentId",
+		"test_model": [
+			{
+				"id": "json_abc",
+				"field1": 1,
+				"field3": [3, 2, 1]
+			},
+			{
+				"id": "json_def_ghi",
+				"field2": "customval",
+				"field4": {
+					"apple": true,
+					"banana": false
+				}
+			}
+		]
+	}
+}

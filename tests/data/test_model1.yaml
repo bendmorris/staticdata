@@ -1,0 +1,11 @@
+test_parent:
+  id: yaml_parentId
+  test_model:
+    - id: yaml_abc
+      field1: 1
+      field3: [3, 2, 1]
+    - id: yaml_def_ghi
+      field2: customval
+      field4:
+        apple: true
+        banana: false
