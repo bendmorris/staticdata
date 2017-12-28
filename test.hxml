@@ -1,0 +1,5 @@
+-main Test
+-cp tests
+--no-inline
+
+-neko test.n

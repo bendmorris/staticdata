@@ -1,0 +1,13 @@
+<test>
+	<test_parent id="parentId">
+		<test_model id="abc" field1="1">
+			<field3 value="3"/>
+			<field3 value="2"/>
+			<field3 value="1"/>
+		</test_model>
+		<test_model id="def_ghi" field2="customval">
+			<field4 key="apple" value="true"/>
+			<field4 key="banana" value="false"/>
+		</test_model>
+	</test_parent>
+</test>
