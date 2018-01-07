@@ -145,9 +145,12 @@ class DataContext
 						var i = param.ident();
 						if (i != null) addFieldName(i);
 					}
-					addFieldName(field.name);
-					addFieldName(field.name.camelCase());
-					addFieldName(field.name.snakeCase());
+					if (fieldNames.length == 0)
+					{
+						addFieldName(field.name);
+						addFieldName(field.name.camelCase());
+						addFieldName(field.name.snakeCase());
+					}
 					dataFields[field] = fieldNames;
 				}
 				else if (m.name == ':index')
