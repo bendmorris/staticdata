@@ -12,6 +12,15 @@ class MacroUtil
 	}
 	static var _ids:Map<String, Map<String, Bool>> = new Map();
 
+	public static function label(pos:Position, label:String)
+	{
+		var inf = Context.getPosInfos(pos);
+		return Context.makePosition({
+			min: inf.min, max: inf.max,
+			file: inf.file + ":" + label,
+		});
+	}
+
 	public static function titleCase(str:String)
 	{
 		var titleCase:String = "";

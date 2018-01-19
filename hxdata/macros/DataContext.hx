@@ -13,7 +13,7 @@ using StringTools;
 
 typedef IndexDef = {
 	var value:Value;
-	var items:Array<String>;
+	var items:Array<Value>;
 }
 
 class DataContext
@@ -45,6 +45,7 @@ class DataContext
 				});
 			}
 		}
+		else if (Std.is(s, Value)) throw "Getting a Value from a Value; this is probably a mistake";
 		else return ConcreteValue(s);
 	}
 
@@ -104,12 +105,12 @@ class DataContext
 	public var abstractComplexType:ComplexType;
 	public var newFields:Array<Field> = new Array();
 
-	public var ordered:Array<Dynamic> = new Array();
+	public var ordered:Array<Value> = new Array();
 	public var autoId:Int = 0;
 	public var nodeCount:Int = 0;
 
 	public var indexes:Map<Field, Array<IndexDef>>;
-	public var values:Map<Field, Map<String, Value>>;
+	public var values:Map<Field, Map<Value, Value>>;
 
 	// find the fields to generate
 	// these fields will generate read-only fields with getters to retrieve the value for each variant
@@ -212,27 +213,29 @@ class DataContext
 			throw "No valid nodes found for DataEnum " + abstractType.name;
 		}
 
-		var pos = Context.currentPos(),
-			typeName = abstractType.name;
+		var typeName = abstractType.name;
 
-		newFields.insert(0, {
-			name: "ordered",
-			doc: null,
-			meta: [],
-			access: [AStatic, APublic],
-			kind: FVar(
-				TPath({name: "Array", pack: [], params: [TPType(abstractComplexType)], sub: null}),
-				ordered.toExpr()
-			),
-			pos: pos,
-		});
+		{
+			var pos = Context.currentPos().label("hxdata:ordered");
+			newFields.insert(0, {
+				name: "ordered",
+				doc: null,
+				meta: [],
+				access: [AStatic, APublic],
+				kind: FVar(
+					TPath({name: "Array", pack: [], params: [TPType(abstractComplexType)], sub: null}),
+					ArrayValue(ordered).valToExpr(pos)
+				),
+				pos: pos,
+			});
+		}
 
 		var arrayIndexAdded:Bool = false;
 		for (field in dataFields.keys())
 		{
 			var fieldType = getFieldType(field);
 			var defaultValue = getFieldDefaultValue(field);
-			var vals:Map<String, Value> = values[field];
+			var vals:Map<Value, Value> = values[field];
 			if (defaultValue == null)
 			{
 				for (v in ordered)
@@ -250,7 +253,7 @@ class DataContext
 				meta: [],
 				access: field.access,
 				kind: FProp("get", "never", fieldType, null),
-				pos: field.pos,
+				pos: field.pos.label("hxdata"),
 			});
 
 			var isInline = inlineFields.exists(field),
@@ -259,6 +262,7 @@ class DataContext
 				sparse = valCount > 128 && valCount < Math.sqrt(ordered.length);
 			if (useMap && sparse)
 			{
+				var pos = field.pos.label("hxdata:map");
 				// for sparse objects, use a Map
 				var mapField = "__" + field.name;
 				newFields.push({
@@ -267,9 +271,9 @@ class DataContext
 					meta: [],
 					access: [AStatic],
 					kind: FVar(TPath({name: "Map", pack: [], params: [TPType(abstractComplexType), TPType(fieldType)], sub: null}), (
-						MapValue(vals).valToExpr(field.pos)
+						MapValue(vals).valToExpr(pos)
 					)),
-					pos: field.pos,
+					pos: pos,
 				});
 				newFields.push({
 					name: "get_" + field.name,
@@ -289,11 +293,12 @@ class DataContext
 						params: null,
 						ret: fieldType,
 					}),
-					pos: field.pos,
+					pos: pos,
 				});
 			}
 			else if (useMap)
 			{
+				var pos = field.pos.label("hxdata:array");
 				// for non-sparse keys use an Array lookup
 				if (!arrayIndexAdded)
 				{
@@ -310,7 +315,7 @@ class DataContext
 					var indexGetter = EReturn(ESwitch(
 						macro this,
 						[for (i in 0 ... ordered.length) {
-							values: [ordered[i].toExpr()],
+							values: [ordered[i].valToExpr(pos)],
 							expr: macro $v{i},
 						}],
 						defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
@@ -337,10 +342,10 @@ class DataContext
 					access: [AStatic],
 					kind: FVar(TPath({name: "Array", pack: [], params: [TPType(fieldType)], sub: null}), (
 						EArrayDecl([
-							for (v in ordered) vals.exists(v) ? vals[v].valToExpr(field.pos) : defaultValue
-						]).at(field.pos)
+							for (v in ordered) vals.exists(v) ? vals[v].valToExpr(pos) : defaultValue
+						]).at(pos)
 					)),
-					pos: field.pos,
+					pos: pos,
 				});
 				newFields.push({
 					name: "get_" + field.name,
@@ -356,16 +361,17 @@ class DataContext
 						params: null,
 						ret: fieldType,
 					}),
-					pos: field.pos,
+					pos: pos,
 				});
 			}
 			else
 			{
+				var pos = field.pos.label("hxdata:switch");
 				// for simple or inline types, use a switch
-				var dupes:Map<String, Array<String>> = new Map();
+				var dupes:Map<Value, Array<Value>> = new Map();
 				for (key in vals.keys())
 				{
-					var val = ExprTools.toString(vals[key].valToExpr(field.pos));
+					var val = vals[key];
 					if (!dupes.exists(val)) dupes[val] = new Array();
 					dupes[val].push(key);
 				}
@@ -375,7 +381,7 @@ class DataContext
 					{
 						for (fieldProcessor in fieldProcessors[field])
 						{
-							expr = ECall(fieldProcessor, [expr]).at(field.pos);
+							expr = ECall(fieldProcessor, [expr]).at(pos);
 						}
 						return expr;
 					}
@@ -387,11 +393,11 @@ class DataContext
 				var getter = EReturn(ESwitch(
 					macro this,
 					[for (v in dupes.keys()) {
-						values: [for (key in dupes[v]) key.toExpr()],
-						expr: process(Context.parse(v, field.pos)),
+						values: [for (key in dupes[v]) key.valToExpr(pos)],
+						expr: process(v.valToExpr(pos)),
 					}],
 					defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
-				).at(field.pos)).at(field.pos);
+				).at(pos)).at(pos);
 
 				newFields.push({
 					name: "get_" + field.name,
@@ -404,13 +410,14 @@ class DataContext
 						params: null,
 						ret: fieldType,
 					}),
-					pos: field.pos,
+					pos: pos,
 				});
 			}
 		}
 
 		for (field in indexes.keys())
 		{
+			var pos = field.pos.label("hxdata:indexes");
 			var index:Array<IndexDef> = indexes[field];
 			var ct = getIndexType(field);
 
@@ -425,9 +432,9 @@ class DataContext
 					], sub: null}),
 					(EArrayDecl([
 						for (indexDef in index)
-						macro ${indexDef.value.valToExpr(field.pos)} => ${indexDef.items.toExpr()}
-					])).at(field.pos)),
-				pos: field.pos,
+						macro ${indexDef.value.valToExpr(pos)} => ${ArrayValue(indexDef.items).valToExpr(pos)}
+					])).at(pos)),
+				pos: pos,
 			});
 		}
 	}

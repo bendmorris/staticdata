@@ -10,7 +10,7 @@ class ValueTools
 {
 	public static function valToExpr(value:Value, ?pos:Position):Expr
 	{
-		if (pos == null) pos = Context.currentPos();
+		if (pos == null) pos = Context.currentPos().label(":hxdata:???");
 		return switch (value)
 		{
 			case ConcreteValue(v):
@@ -19,7 +19,7 @@ class ValueTools
 				EArrayDecl([for (val in v) valToExpr(val, pos)]).at(pos);
 			case MapValue(v):
 				(Lambda.count(v) > 0)
-					? EArrayDecl([for (key in v.keys()) macro $v{key} => ${valToExpr(v[key], pos)}]).at(pos)
+					? EArrayDecl([for (key in v.keys()) macro ${valToExpr(key, pos)} => ${valToExpr(v[key], pos)}]).at(pos)
 					: macro new Map();
 			case LazyValue(s):
 				Context.parse(s, pos);

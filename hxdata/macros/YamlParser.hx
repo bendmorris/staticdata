@@ -37,14 +37,14 @@ class YamlParser implements DataParser
 			}
 
 			var name = id.titleCase();
-			var value = node.exists("value") ? node.get("value") : id;
+			var value = node.exists("value") ? DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.get("value")) : ConcreteValue(id);
 			context.ordered.push(value);
 			context.newFields.push({
 				name: name,
 				doc: null,
 				meta: MacroUtil.enumMeta,
 				access: [],
-				kind: FVar(context.abstractComplexType, macro $v{value}),
+				kind: FVar(context.abstractComplexType, macro ${value.valToExpr()}),
 				pos: pos,
 			});
 
@@ -119,8 +119,13 @@ class YamlParser implements DataParser
 					}
 					return ArrayValue(values);
 
-				case "haxe.ds.StringMap":
-					var values:Map<String, Value> = new Map();
+				case "haxe.ds.StringMap", "haxe.ds.IntMap":
+					var ptKey = ComplexTypeTools.toType(switch (c.toString())
+					{
+						case "haxe.ds.IntMap": macro : Int;
+						default: macro : String;
+					});
+					var values:Map<Value, Value> = new Map();
 					var pt = params[0];
 					var val = find(node, fieldNames)[0];
 					if (val != null)
@@ -129,7 +134,8 @@ class YamlParser implements DataParser
 						for (key in map.keys())
 						{
 							if (key == "__parent") continue;
-							values[key] = DataContext.getValue(pt, map.get(key));
+							var typedKey = DataContext.getValue(ptKey, key);
+							values[typedKey] = DataContext.getValue(pt, map.get(key));
 						}
 					}
 					return MapValue(values);

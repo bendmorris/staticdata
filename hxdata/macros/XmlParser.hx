@@ -34,14 +34,14 @@ class XmlParser implements DataParser
 			}
 
 			var name = id.titleCase();
-			var value = node.has.value ? node.att.value : id;
+			var value = node.has.value ? DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.att.value) : ConcreteValue(id);
 			context.ordered.push(value);
 			context.newFields.push({
 				name: name,
 				doc: null,
 				meta: MacroUtil.enumMeta,
 				access: [],
-				kind: FVar(context.abstractComplexType, macro $v{value}),
+				kind: FVar(context.abstractComplexType, macro ${value.valToExpr()}),
 				pos: pos,
 			});
 
@@ -103,7 +103,7 @@ class XmlParser implements DataParser
 					var pt = params[0];
 					return ArrayValue([for (value in findValues(node, fieldNames, true)) DataContext.getValue(pt, value)]);
 				case "haxe.ds.StringMap":
-					var values:Map<String, Value> = new Map();
+					var values:Map<Value, Value> = new Map();
 					var pt = params[0];
 					for (fieldName in fieldNames)
 					{
@@ -114,14 +114,14 @@ class XmlParser implements DataParser
 							{
 								var key = att.substr(fieldName.length + 1);
 								var val = node.att.resolve(att);
-								values[key] = DataContext.getValue(pt, val);
+								values[ConcreteValue(key)] = DataContext.getValue(pt, val);
 							}
 						}
 						for (childNode in node.nodes.resolve(fieldName))
 						{
 							var key = findOneOf(childNode, ["key", "type"]);
 							var val = childNode.has.value ? childNode.att.value : childNode.innerHTML;
-							values[key] = DataContext.getValue(pt, val);
+							values[ConcreteValue(key)] = DataContext.getValue(pt, val);
 						}
 					}
 					return MapValue(values);
