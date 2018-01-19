@@ -11,79 +11,20 @@ using hxdata.MacroUtil;
 using hxdata.ValueTools;
 using StringTools;
 
-class XmlParser implements DataParser
+class XmlParser extends DataParser<Fast>
 {
 	public function new() {}
 
-	public function parse(context:DataContext, path:String)
+	override public function parse(context:DataContext, path:String)
 	{
-		var pos = Context.currentPos();
 		var data = sys.io.File.getContent(path);
 		var xml = Xml.parse(data);
 		var fast = new Fast(xml.firstElement());
 
-		for (node in getNodes(fast, context.nodeName))
-		{
-			++context.nodeCount;
-			var id:String = node.has.id ? node.att.id : context.nodeName + (++context.autoId);
-			switch (DataContext.getValue(ComplexTypeTools.toType(macro :String), id))
-			{
-				case ConcreteValue(s): {}
-				default:
-					throw 'Id field must contain only concrete values; found "$id"';
-			}
-
-			var name = id.titleCase();
-			var ident = FieldValue(context.abstractType.name, name);
-			var value = node.has.value ? DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.att.value, false) : context.defaultValue(id);
-			context.ordered.push(ident);
-			context.newFields.push({
-				name: name,
-				doc: null,
-				meta: MacroUtil.enumMeta,
-				access: [],
-				kind: FVar(context.abstractComplexType, macro ${value.valToExpr()}),
-				pos: pos,
-			});
-
-			for (field in context.dataFields.keys())
-			{
-				var ct = DataContext.getFieldType(field);
-				var fieldNames = context.dataFields[field];
-				var val = getValueFromNode(ct, fieldNames, node);
-				if (val != null) context.values[field][ident] = val;
-			}
-
-			for (field in context.indexFields.keys())
-			{
-				var ct = DataContext.getIndexType(field);
-				var indexNames = context.indexFields[field];
-				var val = getValueFromNode(ct, indexNames, node);
-				if (val != null)
-				{
-					var added:Bool = false;
-					for (indexDef in context.indexes[field])
-					{
-						if (indexDef.value.valToStr() == val.valToStr())
-						{
-							indexDef.items.push(ident);
-							added = true;
-							break;
-						}
-					}
-					if (!added)
-					{
-						context.indexes[field].push({
-							value: val,
-							items: [ident],
-						});
-					}
-				}
-			}
-		}
+		processNodes(context, path, getNodes(fast, context.nodeName));
 	}
 
-	static function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:Fast):Null<Value>
+	override function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:Fast):Null<Value>
 	{
 		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
 
@@ -104,20 +45,7 @@ class XmlParser implements DataParser
 					var pt = params[0];
 					return ArrayValue([for (value in findValues(node, fieldNames, true)) DataContext.getValue(pt, value)]);
 				case "haxe.ds.StringMap":
-					var ptKey = ComplexTypeTools.toType(switch (c.toString())
-					{
-						case "haxe.ds.IntMap": macro : Int;
-						default: macro : String;
-					});
-					switch (t)
-					{
-						case TAbstract(a, params):
-							if (a.toString() == "Map")
-							{
-								ptKey = params[0];
-							}
-						default: {}
-					}
+					var ptKey = mapKeyType(c, t);
 					var values:Map<Value, Value> = new Map();
 					var pt = params[0];
 					for (fieldName in fieldNames)
@@ -150,7 +78,7 @@ class XmlParser implements DataParser
 		}
 	}
 
-	static function findValues(node:Fast, fieldNames:Array<String>, array:Bool=false):Array<String>
+	function findValues(node:Fast, fieldNames:Array<String>, array:Bool=false):Array<String>
 	{
 		var values:Array<String> = new Array();
 		for (fieldName in fieldNames)
@@ -193,17 +121,6 @@ class XmlParser implements DataParser
 		return values;
 	}
 
-	static function getNodes(fast:Fast, nodeName:String):Array<Fast>
-	{
-		if (nodeName.indexOf(".") > -1)
-		{
-			var parts = nodeName.split(".");
-			var rest = parts.slice(1).join(".");
-			return [for (child in fast.nodes.resolve(parts[0])) for (node in getNodes(child, rest)) node];
-		}
-		else return [for (node in fast.nodes.resolve(nodeName)) node];
-	}
-
 	static function findOneOf(node:Fast, atts:Array<String>)
 	{
 		for (att in atts)
@@ -214,5 +131,20 @@ class XmlParser implements DataParser
 			}
 		}
 		throw "Couldn't find a supported attribute (" + atts.join(", ") + ")";
+	}
+
+	override function getChildren(node:Fast, name:String):Array<Fast>
+	{
+		return [for (child in node.nodes.resolve(name)) child];
+	}
+
+	override function exists(node:Fast, key:String):Bool
+	{
+		return node.has.resolve(key);
+	}
+
+	override function get(node:Fast, key:String):Dynamic
+	{
+		return node.att.resolve(key);
 	}
 }

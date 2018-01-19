@@ -22,14 +22,15 @@ class DataEnum
 	{
 		filename = Context.resolvePath(filename);
 
-		for (parserData in [
-			{extension: ".xml", parser: new XmlParser()},
-			#if yaml {extension: ".yaml", parser: new YamlParser()}, #end
-		])
+		var parsers:Map<String, DataParser.IDataParser> = new Map();
+		parsers[".xml"] = new XmlParser();
+		#if yaml parsers[".yaml"] = new YamlParser(); #end
+
+		for (extension in parsers.keys())
 		{
-			if (filename.endsWith(parserData.extension))
+			if (filename.endsWith(extension))
 			{
-				return parserData.parser.parse(dataContext, filename);
+				return parsers[extension].parse(dataContext, filename);
 			}
 		}
 		throw 'Unrecognized file format: $filename';
