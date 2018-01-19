@@ -1,6 +1,6 @@
 package hxdata.data;
 
-@:build(hxdata.macros.DataEnum.build([
+@:build(hxdata.DataEnum.build([
 	"tests/data/test_model1.xml",
 	//"tests/data/test_model1.json",
 	"tests/data/test_model1.yaml"

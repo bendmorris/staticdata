@@ -1,4 +1,4 @@
-package hxdata.macros;
+package hxdata;
 
 import yaml.util.ObjectMap;
 

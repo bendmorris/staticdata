@@ -1,4 +1,4 @@
-package hxdata.macros;
+package hxdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -7,8 +7,8 @@ import haxe.macro.Type;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
 import hxdata.Value;
-using hxdata.macros.MacroUtil;
-using hxdata.macros.ValueTools;
+using hxdata.MacroUtil;
+using hxdata.ValueTools;
 using StringTools;
 
 typedef IndexDef = {
@@ -18,23 +18,39 @@ typedef IndexDef = {
 
 class DataContext
 {
-	public static function getValue(t:Type, s:Dynamic):Value
+	public static function getValue(t:Type, s:Dynamic, convertEnums:Bool = true):Value
 	{
 		if (Std.is(s, String))
 		{
 			var s:String = cast s;
 			if (s.startsWith("`") && s.endsWith("`"))
 			{
+				// raw Haxe expression
 				return LazyValue(s.substr(1, s.length - 2));
 			}
 			else
 			{
+				if (convertEnums)
+				{
+					var an = enumAbstractName(t);
+					if (an != null)
+					{
+						var name = MacroUtil.titleCase(s);
+						return FieldValue(an, name);
+					}
+				}
 				t = TypeTools.followWithAbstracts(t);
 				return ConcreteValue(switch (TypeTools.toString(t))
 				{
 					case "String": s;
-					case "Int", "UInt": Std.parseInt(s);
-					case "Float": Std.parseFloat(s);
+					case "Int", "UInt":
+						var val = Std.parseInt(s);
+						if (val == null) throw 'invalid Int: $s';
+						val;
+					case "Float":
+						var val = Std.parseFloat(s);
+						if (val == null) throw 'invalid Float: $s';
+						val;
 					case "Bool": switch (s)
 					{
 						case "true": true;
@@ -98,6 +114,25 @@ class DataContext
 			case "String", "Int", "UInt", "Float", "Bool": false;
 			default: true;
 		}
+	}
+
+	static function enumAbstractName(t:Type):Null<String>
+	{
+		var t = TypeTools.follow(t);
+		switch (t)
+		{
+			case TAbstract(a, _):
+				var t = a.get();
+				for (m in t.meta.get())
+				{
+					if (m.name == ":enum")
+					{
+						return t.name;
+					}
+				}
+			default: {}
+		}
+		return null;
 	}
 
 	public var nodeName:String;
@@ -204,6 +239,20 @@ class DataContext
 		values = [
 			for (field in dataFields.keys()) field => new Map()
 		];
+	}
+
+	public function defaultValue(id:String)
+	{
+		var t = TypeTools.toString(TypeTools.followWithAbstracts(ComplexTypeTools.toType(abstractComplexType)));
+		return switch (t)
+		{
+			case "String":
+				ConcreteValue(id);
+			case "Int", "UInt":
+				ConcreteValue(autoId);
+			default:
+				throw 'Type $t does not support automatic values; provide a value explicitly';
+		}
 	}
 
 	public function build()
@@ -396,7 +445,7 @@ class DataContext
 						values: [for (key in dupes[v]) key.valToExpr(pos)],
 						expr: process(v.valToExpr(pos)),
 					}],
-					defaultValue == null ? macro {throw 'unsupported value: ' + this;} : defaultValue
+					defaultValue == null ? (macro {throw 'unsupported value: ' + this;}).expr.at(pos) : defaultValue
 				).at(pos)).at(pos);
 
 				newFields.push({

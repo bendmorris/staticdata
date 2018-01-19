@@ -1,10 +1,10 @@
-package hxdata.macros;
+package hxdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
 import hxdata.Value;
-using hxdata.macros.MacroUtil;
+using hxdata.MacroUtil;
 
 class ValueTools
 {
@@ -23,6 +23,9 @@ class ValueTools
 					: macro new Map();
 			case LazyValue(s):
 				Context.parse(s, pos);
+			case FieldValue(i, f):
+				if (i == "CatStat" && f == "Str") throw f;
+				EField(EConst(CIdent(i)).at(pos), f).at(pos);
 		}
 	}
 

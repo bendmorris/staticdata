@@ -1,4 +1,4 @@
-package hxdata.macros;
+package hxdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;

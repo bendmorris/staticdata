@@ -1,4 +1,4 @@
-package hxdata.macros;
+package hxdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -10,9 +10,9 @@ import yaml.Parser;
 import yaml.util.ObjectMap;
 import hxdata.Value;
 using StringTools;
-using hxdata.macros.MacroUtil;
-using hxdata.macros.ValueTools;
-using hxdata.macros.YamlTools;
+using hxdata.MacroUtil;
+using hxdata.ValueTools;
+using hxdata.YamlTools;
 
 class YamlParser implements DataParser
 {
@@ -20,7 +20,7 @@ class YamlParser implements DataParser
 
 	public function parse(context:DataContext, path:String)
 	{
-		var pos = Context.currentPos();
+		var pos = Context.currentPos().label('hxdata:$path');
 		var data = sys.io.File.getContent(path);
 		var yaml:AnyObjectMap = Yaml.parse(data);
 		yaml.addParents();
@@ -37,8 +37,17 @@ class YamlParser implements DataParser
 			}
 
 			var name = id.titleCase();
-			var value = node.exists("value") ? DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.get("value")) : ConcreteValue(id);
-			context.ordered.push(value);
+			var ident = FieldValue(context.abstractType.name, name);
+			var value:Value;
+			if (node.exists("value"))
+			{
+				value = DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.get("value"), false);
+			}
+			else
+			{
+				value = context.defaultValue(id);
+			}
+			context.ordered.push(ident);
 			context.newFields.push({
 				name: name,
 				doc: null,
@@ -53,7 +62,7 @@ class YamlParser implements DataParser
 				var ct = DataContext.getFieldType(field);
 				var fieldNames = context.dataFields[field];
 				var val = getValueFromNode(ct, fieldNames, node);
-				if (val != null) context.values[field][value] = val;
+				if (val != null) context.values[field][ident] = val;
 			}
 
 			for (field in context.indexFields.keys())
@@ -68,7 +77,7 @@ class YamlParser implements DataParser
 					{
 						if (indexDef.value.valToStr() == val.valToStr())
 						{
-							indexDef.items.push(value);
+							indexDef.items.push(ident);
 							added = true;
 							break;
 						}
@@ -77,7 +86,7 @@ class YamlParser implements DataParser
 					{
 						context.indexes[field].push({
 							value: val,
-							items: [value],
+							items: [ident],
 						});
 					}
 				}
@@ -87,7 +96,7 @@ class YamlParser implements DataParser
 
 	static function getValueFromNode(ct:ComplexType, fieldNames:Array<String>, node:AnyObjectMap):Null<Value>
 	{
-		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
+		var t = TypeTools.follow(ComplexTypeTools.toType(ct));
 
 		function findSingleValue()
 		{
@@ -99,11 +108,18 @@ class YamlParser implements DataParser
 			return null;
 		}
 
-		switch (t)
+		switch (TypeTools.followWithAbstracts(t))
 		{
+			case TAbstract(a, params): switch (a.toString())
+			{
+				case "Int", "UInt", "Bool", "Float":
+					return findSingleValue();
+				default:
+					throw "Unsupported value type: " + TypeTools.toString(t);
+			}
 			case TInst(c, params): switch (c.toString())
 			{
-				case "String":
+				case "String", "Int", "UInt", "Bool", "Float":
 					return findSingleValue();
 
 				case "Array":
@@ -125,6 +141,15 @@ class YamlParser implements DataParser
 						case "haxe.ds.IntMap": macro : Int;
 						default: macro : String;
 					});
+					switch (t)
+					{
+						case TAbstract(a, params):
+							if (a.toString() == "Map")
+							{
+								ptKey = params[0];
+							}
+						default: {}
+					}
 					var values:Map<Value, Value> = new Map();
 					var pt = params[0];
 					var val = find(node, fieldNames)[0];
@@ -139,12 +164,15 @@ class YamlParser implements DataParser
 						}
 					}
 					return MapValue(values);
+
 				default:
 					throw "Unsupported value type: " + TypeTools.toString(t);
 			}
 
 			default:
-				return findSingleValue();
+				var val = findSingleValue();
+				if (val == null) throw 'No value found for $t $fieldNames';
+				return val;
 		}
 	}
 

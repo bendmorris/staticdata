@@ -1,4 +1,4 @@
-package hxdata.macros;
+package hxdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -7,8 +7,8 @@ import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
 import haxe.xml.Fast;
 import hxdata.Value;
-using hxdata.macros.MacroUtil;
-using hxdata.macros.ValueTools;
+using hxdata.MacroUtil;
+using hxdata.ValueTools;
 using StringTools;
 
 class XmlParser implements DataParser
@@ -34,8 +34,9 @@ class XmlParser implements DataParser
 			}
 
 			var name = id.titleCase();
-			var value = node.has.value ? DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.att.value) : ConcreteValue(id);
-			context.ordered.push(value);
+			var ident = FieldValue(context.abstractType.name, name);
+			var value = node.has.value ? DataContext.getValue(ComplexTypeTools.toType(context.abstractComplexType), node.att.value, false) : context.defaultValue(id);
+			context.ordered.push(ident);
 			context.newFields.push({
 				name: name,
 				doc: null,
@@ -50,7 +51,7 @@ class XmlParser implements DataParser
 				var ct = DataContext.getFieldType(field);
 				var fieldNames = context.dataFields[field];
 				var val = getValueFromNode(ct, fieldNames, node);
-				if (val != null) context.values[field][value] = val;
+				if (val != null) context.values[field][ident] = val;
 			}
 
 			for (field in context.indexFields.keys())
@@ -65,7 +66,7 @@ class XmlParser implements DataParser
 					{
 						if (indexDef.value.valToStr() == val.valToStr())
 						{
-							indexDef.items.push(value);
+							indexDef.items.push(ident);
 							added = true;
 							break;
 						}
@@ -74,7 +75,7 @@ class XmlParser implements DataParser
 					{
 						context.indexes[field].push({
 							value: val,
-							items: [value],
+							items: [ident],
 						});
 					}
 				}
@@ -103,6 +104,20 @@ class XmlParser implements DataParser
 					var pt = params[0];
 					return ArrayValue([for (value in findValues(node, fieldNames, true)) DataContext.getValue(pt, value)]);
 				case "haxe.ds.StringMap":
+					var ptKey = ComplexTypeTools.toType(switch (c.toString())
+					{
+						case "haxe.ds.IntMap": macro : Int;
+						default: macro : String;
+					});
+					switch (t)
+					{
+						case TAbstract(a, params):
+							if (a.toString() == "Map")
+							{
+								ptKey = params[0];
+							}
+						default: {}
+					}
 					var values:Map<Value, Value> = new Map();
 					var pt = params[0];
 					for (fieldName in fieldNames)
@@ -119,9 +134,9 @@ class XmlParser implements DataParser
 						}
 						for (childNode in node.nodes.resolve(fieldName))
 						{
-							var key = findOneOf(childNode, ["key", "type"]);
+							var key = DataContext.getValue(ptKey, findOneOf(childNode, ["key", "type"]));
 							var val = childNode.has.value ? childNode.att.value : childNode.innerHTML;
-							values[ConcreteValue(key)] = DataContext.getValue(pt, val);
+							values[key] = DataContext.getValue(pt, val);
 						}
 					}
 					return MapValue(values);

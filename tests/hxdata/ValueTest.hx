@@ -2,8 +2,8 @@ package hxdata;
 
 import haxe.macro.Expr;
 import hxdata.Value;
-using hxdata.macros.MacroUtil;
-using hxdata.macros.ValueTools;
+using hxdata.MacroUtil;
+using hxdata.ValueTools;
 
 class ValueTest extends TestCase
 {
