@@ -1,4 +1,4 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;

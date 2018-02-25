@@ -1,6 +1,6 @@
-package hxdata.data;
+package staticdata.data;
 
-@:build(hxdata.DataEnum.build([
+@:build(staticdata.DataEnum.build([
 	"tests/data/test_model1.xml",
 	//"tests/data/test_model1.json",
 	"tests/data/test_model1.yaml"

@@ -1,4 +1,4 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -6,9 +6,9 @@ import haxe.macro.Type;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
 import haxe.xml.Fast;
-import hxdata.Value;
-using hxdata.MacroUtil;
-using hxdata.ValueTools;
+import staticdata.Value;
+using staticdata.MacroUtil;
+using staticdata.ValueTools;
 using StringTools;
 
 class XmlParser extends DataParser<Fast>

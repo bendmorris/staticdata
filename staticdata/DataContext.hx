@@ -1,4 +1,4 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -6,9 +6,9 @@ import haxe.macro.ExprTools;
 import haxe.macro.Type;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
-import hxdata.Value;
-using hxdata.MacroUtil;
-using hxdata.ValueTools;
+import staticdata.Value;
+using staticdata.MacroUtil;
+using staticdata.ValueTools;
 using StringTools;
 
 typedef IndexDef = {
@@ -77,17 +77,17 @@ class DataContext
 	public static function getIndexType(field:Field):ComplexType
 	{
 		var ct = getFieldType(field);
-		var t = ComplexTypeTools.toType(ct);
+		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
 		switch (t)
 		{
 			case TInst(t, params):
-				switch (t.get().name)
+				switch (t.get().module)
 				{
 					case "haxe.ds.StringMap": return macro : String;
 					case "haxe.ds.IntMap": return macro : Int;
 				}
 			case TAbstract(t, params):
-				switch (t.get().name)
+				switch (t.get().module)
 				{
 					case "Map": return TypeTools.toComplexType(params[0]);
 				}
@@ -265,7 +265,7 @@ class DataContext
 		var typeName = abstractType.name;
 
 		{
-			var pos = Context.currentPos().label("hxdata:ordered");
+			var pos = Context.currentPos().label("staticdata:ordered");
 			newFields.insert(0, {
 				name: "ordered",
 				doc: null,
@@ -302,7 +302,7 @@ class DataContext
 				meta: [],
 				access: field.access,
 				kind: FProp("get", "never", fieldType, null),
-				pos: field.pos.label("hxdata"),
+				pos: field.pos.label("staticdata"),
 			});
 
 			var isInline = inlineFields.exists(field),
@@ -311,7 +311,7 @@ class DataContext
 				sparse = valCount > 128 && valCount < Math.sqrt(ordered.length);
 			if (useMap && sparse)
 			{
-				var pos = field.pos.label("hxdata:map");
+				var pos = field.pos.label("staticdata:map");
 				// for sparse objects, use a Map
 				var mapField = "__" + field.name;
 				newFields.push({
@@ -347,7 +347,7 @@ class DataContext
 			}
 			else if (useMap)
 			{
-				var pos = field.pos.label("hxdata:array");
+				var pos = field.pos.label("staticdata:array");
 				// for non-sparse keys use an Array lookup
 				if (!arrayIndexAdded)
 				{
@@ -415,7 +415,7 @@ class DataContext
 			}
 			else
 			{
-				var pos = field.pos.label("hxdata:switch");
+				var pos = field.pos.label("staticdata:switch");
 				// for simple or inline types, use a switch
 				var dupes:Map<Value, Array<Value>> = new Map();
 				for (key in vals.keys())
@@ -466,7 +466,7 @@ class DataContext
 
 		for (field in indexes.keys())
 		{
-			var pos = field.pos.label("hxdata:indexes");
+			var pos = field.pos.label("staticdata:indexes");
 			var index:Array<IndexDef> = indexes[field];
 			var ct = getIndexType(field);
 

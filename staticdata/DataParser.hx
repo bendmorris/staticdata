@@ -1,15 +1,15 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
 import haxe.macro.ComplexTypeTools;
 import haxe.macro.TypeTools;
-import hxdata.Value;
+import staticdata.Value;
 using StringTools;
-using hxdata.MacroUtil;
-using hxdata.ValueTools;
-using hxdata.YamlTools;
+using staticdata.MacroUtil;
+using staticdata.ValueTools;
+using staticdata.YamlTools;
 
 interface IDataParser
 {
@@ -60,7 +60,7 @@ class DataParser<T> implements IDataParser
 
 	function processNodes(context:DataContext, path:String, nodes:Array<T>)
 	{
-		var pos = Context.currentPos().label('hxdata:$path');
+		var pos = Context.currentPos().label('staticdata:$path');
 
 		for (node in nodes)
 		{

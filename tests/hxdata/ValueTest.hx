@@ -1,9 +1,9 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Expr;
-import hxdata.Value;
-using hxdata.MacroUtil;
-using hxdata.ValueTools;
+import staticdata.Value;
+using staticdata.MacroUtil;
+using staticdata.ValueTools;
 
 class ValueTest extends TestCase
 {

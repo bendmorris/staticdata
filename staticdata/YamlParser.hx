@@ -1,4 +1,4 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -8,11 +8,11 @@ import haxe.macro.TypeTools;
 import yaml.Yaml;
 import yaml.Parser;
 import yaml.util.ObjectMap;
-import hxdata.Value;
+import staticdata.Value;
 using StringTools;
-using hxdata.MacroUtil;
-using hxdata.ValueTools;
-using hxdata.YamlTools;
+using staticdata.MacroUtil;
+using staticdata.ValueTools;
+using staticdata.YamlTools;
 
 class YamlParser extends DataParser<AnyObjectMap>
 {

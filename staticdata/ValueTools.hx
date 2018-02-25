@@ -1,16 +1,16 @@
-package hxdata;
+package staticdata;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.ExprTools;
-import hxdata.Value;
-using hxdata.MacroUtil;
+import staticdata.Value;
+using staticdata.MacroUtil;
 
 class ValueTools
 {
 	public static function valToExpr(value:Value, ?pos:Position):Expr
 	{
-		if (pos == null) pos = Context.currentPos().label(":hxdata:???");
+		if (pos == null) pos = Context.currentPos().label(":staticdata:???");
 		return switch (value)
 		{
 			case ConcreteValue(v):

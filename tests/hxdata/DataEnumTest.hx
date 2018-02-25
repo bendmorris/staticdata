@@ -1,6 +1,6 @@
-package hxdata;
+package staticdata;
 
-import hxdata.data.TestModel1;
+import staticdata.data.TestModel1;
 
 class DataEnumTest extends TestCase
 {

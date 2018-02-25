@@ -1,4 +1,4 @@
-package hxdata;
+package staticdata;
 
 import sys.FileSystem;
 using StringTools;
