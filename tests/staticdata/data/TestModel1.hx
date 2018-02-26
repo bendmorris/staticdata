@@ -1,6 +1,6 @@
 package staticdata.data;
 
-@:build(staticdata.DataEnum.build([
+@:build(staticdata.DataModel.build([
 	"tests/data/test_model1.xml",
 	//"tests/data/test_model1.json",
 	"tests/data/test_model1.yaml"

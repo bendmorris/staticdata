@@ -1,0 +1,14 @@
+test_model2:
+- id: model2a
+  mod3:
+  - id: model3a
+    value: 3
+    name: "abc"
+    color: "blue"
+
+- id: model2b
+  mod3:
+  - id: model3b
+    value: 4
+    color: "blue"
+    name: "def"

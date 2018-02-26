@@ -36,7 +36,14 @@ class YamlParser extends DataParser<AnyObjectMap>
 			var f = find(node, fieldNames);
 			if (f.length > 0)
 			{
-				return DataContext.getValue(t, f[0]);
+				try
+				{
+					return DataContext.getValue(t, f[0]);
+				}
+				catch (e:String)
+				{
+					throw 'failed to get value from ${fieldNames.join(",")}: $e';
+				}
 			}
 			return null;
 		}

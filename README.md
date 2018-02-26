@@ -1,19 +1,19 @@
-`staticdata` is a library that manages "static data" - sets of data that don't 
-change at runtime, with one or more variants that share a common schema of 
-associated information. `staticdata` creates Haxe enum abstracts for each type 
-of data and makes it easy to access their associated attributes in a type-safe 
-way. Parsing/code generation and validation is done at compile time, so it's 
+`staticdata` is a library that manages "static data" - sets of data that don't
+change at runtime, with one or more variants that share a common schema of
+associated information. `staticdata` creates Haxe enum abstracts for each type
+of data and makes it easy to access their associated attributes in a type-safe
+way. Parsing/code generation and validation is done at compile time, so it's
 both fast and safe.
 
 ## Getting started
 
 ### Schema
 
-To use `staticdata`, define the structure of your data in an abstract by using 
+To use `staticdata`, define the structure of your data in an abstract by using
 the @:a metadata to mark data fields:
 
 ```haxe
-@:build(staticdata.macros.DataEnum.build(["data/dogs.xml"], "breed"))
+@:build(staticdata.macros.DataModel.build(["data/dogs.xml"], "breed"))
 @:enum
 abstract DogBreed(String) from String to String
 {
@@ -65,21 +65,21 @@ trace(value1.synonyms);
 trace(value1.stats['strength']);
 ```
 
-As these are Haxe abstract types, field access, helper methods, etc. exist at 
-compile time only; at runtime, they're indistinguishable from the primitive 
+As these are Haxe abstract types, field access, helper methods, etc. exist at
+compile time only; at runtime, they're indistinguishable from the primitive
 they're based on (in this case a String.)
 
 ## Details
 
 ### Underlying types
 
-The enum abstract can use *any* convenient underlying type. For String 
-abstracts, the value will be assumed to be the same as the ID if none is 
-specified. Otherwise, you can specify the variant's runtime value using the 
+The enum abstract can use *any* convenient underlying type. For String
+abstracts, the value will be assumed to be the same as the ID if none is
+specified. Otherwise, you can specify the variant's runtime value using the
 `value` field:
 
 ```haxe
-@:build(staticdata.macros.DataEnum.build(["data/fruit.yaml"], "fruit"))
+@:build(staticdata.macros.DataModel.build(["data/fruit.yaml"], "fruit"))
 @:enum
 abstract FruitType(Int) from Int to Int
 {
@@ -97,11 +97,11 @@ fruit:
 
 ### Ordering
 
-To get all variants in the order they were specified in the data, use 
+To get all variants in the order they were specified in the data, use
 `MyDataClass.ordered`:
 
 ```haxe
-@:build(staticdata.macros.DataEnum.build(["data/fruit.yaml"], "fruit"))
+@:build(staticdata.macros.DataModel.build(["data/fruit.yaml"], "fruit"))
 @:enum
 abstract FruitType(Int) from Int to Int
 {
@@ -118,12 +118,12 @@ abstract FruitType(Int) from Int to Int
 
 ### IDs
 
-Static data variants have identifiers which are used to reference them in other 
-data or in code. `staticdata` uses a convention of "snake_case" identifiers in 
+Static data variants have identifiers which are used to reference them in other
+data or in code. `staticdata` uses a convention of "snake_case" identifiers in
 data that correspond to TitleCase enum variants in code:
 
 ```haxe
-@:build(staticdata.macros.DataEnum.build(["data/bird.yaml"], "birds"))
+@:build(staticdata.macros.DataModel.build(["data/bird.yaml"], "birds"))
 @:enum
 abstract BirdType(Int) from Int to Int
 {
@@ -150,8 +150,8 @@ class Main {
 
 ### Default field values
 
-Field values with a default don't need to be specified in the data. Field values 
-with no default are required, even if the type is nullable; specify `null` as 
+Field values with a default don't need to be specified in the data. Field values
+with no default are required, even if the type is nullable; specify `null` as
 the default if that's what you want.
 
 ### Supported types
@@ -172,13 +172,13 @@ birds:
 
 ### Links between other models
 
-`staticdata` aims to make static data types easily interoperable. Therefore, 
-when the type of a field is another enum abstract, the parser will assume that 
-it follows the ID convention above and will try to refer to it in a type-safe 
+`staticdata` aims to make static data types easily interoperable. Therefore,
+when the type of a field is another enum abstract, the parser will assume that
+it follows the ID convention above and will try to refer to it in a type-safe
 way:
 
 ```haxe
-@:build(staticdata.macros.DataEnum.build(["data/bird.yaml"], "fruit"))
+@:build(staticdata.macros.DataModel.build(["data/bird.yaml"], "fruit"))
 @:enum
 abstract FruitType(String) from String to String
 {
@@ -186,7 +186,7 @@ abstract FruitType(String) from String to String
     @:a public var colors:Array<FruitColor>;
 }
 
-@:build(staticdata.macros.DataEnum.build(["data/fruit.yaml"], "colors"))
+@:build(staticdata.macros.DataModel.build(["data/fruit.yaml"], "colors"))
 @:enum
 abstract FruitColor(UInt) from UInt to UInt
 {
@@ -211,11 +211,11 @@ colors:
   value: 0xd4aa00
 ```
 
-When the code for the `FruitType` variants is generated, the value for 
+When the code for the `FruitType` variants is generated, the value for
 `FruitType.Apple.colors` will be `[FruitColor.Red, FruitColor.Yellow]`.
 
-For strings which should be converted to an @:enum but are *not* staticdata 
-types, you can bypass this inference by specifying the field value as a string 
+For strings which should be converted to an @:enum but are *not* staticdata
+types, you can bypass this inference by specifying the field value as a string
 containing a Haxe expression, e.g. "`'yellow'`".
 
 ### Field access
@@ -226,16 +226,16 @@ The generated code to access variant attributes may use one of three strategies:
 - An array of values, with an array index generated for each variant
 - A map of values
 
-`staticdata` will use heuristics based on field type and number of variants to 
+`staticdata` will use heuristics based on field type and number of variants to
 choose which one to use.
 
 ### Hierarchical/nested models
 
-Nested models can be supported by specifying an attribute's data path using 
+Nested models can be supported by specifying an attribute's data path using
 either dots (for children) or carets (for parents), as follows:
 
 ```haxe
-@:build(staticdata.DataEnum.build(["data/upgrades.yaml"], "category"))
+@:build(staticdata.DataModel.build(["data/upgrades.yaml"], "category"))
 @:enum
 abstract UpgradeCategory(String) from String to String
 {
@@ -243,7 +243,7 @@ abstract UpgradeCategory(String) from String to String
     @:a(upgrades.id) public var upgrades:Array<UpgradeType>;
 }
 
-@:build(staticdata.DataEnum.build(["data/upgrades.yaml"], "category.upgrades"))
+@:build(staticdata.DataModel.build(["data/upgrades.yaml"], "category.upgrades"))
 @:enum
 abstract UpgradeType(String) from String to String
 {

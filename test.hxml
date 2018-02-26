@@ -2,4 +2,4 @@
 -cp tests
 -lib yaml
 --no-inline
---interp
+-neko test.n

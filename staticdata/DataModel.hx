@@ -16,7 +16,7 @@ using StringTools;
 /**
  * Used to define an enum abstract with variants from an XML data file.
  */
-class DataEnum
+class DataModel
 {
 	public static function parse(dataContext:DataContext, filename:String)
 	{
@@ -56,10 +56,10 @@ class DataEnum
 						abstractType = a.get();
 						typeName = abstractType.name;
 						meta = abstractType.meta;
-					default: throw "Unsupported type for DataEnum: " + type;
+					default: throw "Unsupported type for DataModel: " + type;
 				}
 			default:
-				throw "Unsupported type for DataEnum: " + type;
+				throw "Unsupported type for DataModel: " + type;
 		}
 
 		// find the data files to parse
@@ -70,9 +70,9 @@ class DataEnum
 			for (m in pathMeta)
 			{
 				var p = m.params;
-				if (p == null) throw "Empty @:dataPath on DataEnum " + abstractType.name;
+				if (p == null) throw "Empty @:dataPath on DataModel " + abstractType.name;
 				else if (p[0].ident() != null) dataFiles.push(p[0].ident());
-				else throw "Bad @:dataPath on DataEnum " + abstractType.name + ": " + p[0].expr;
+				else throw "Bad @:dataPath on DataModel " + abstractType.name + ": " + p[0].expr;
 			}
 		}
 		if (nodeName == null)
@@ -84,7 +84,7 @@ class DataEnum
 				for (m in nodeNameMeta)
 				{
 					var p = m.params;
-					if (p == null) throw "Empty @:dataNode on DataEnum " + abstractType.name;
+					if (p == null) throw "Empty @:dataNode on DataModel " + abstractType.name;
 					nodeName = p[0].ident();
 					break;
 				}
@@ -107,7 +107,7 @@ class DataEnum
 		}
 		if (files.length == 0)
 		{
-			throw "No data files specified for DataEnum " + abstractType.name + "; search paths: " + dataFiles.join(", ");
+			throw "No data files specified for DataModel " + abstractType.name + "; search paths: " + dataFiles.join(", ");
 		}
 
 		var context:DataContext = new DataContext(nodeName, abstractType, fields);

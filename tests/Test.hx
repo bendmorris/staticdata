@@ -5,7 +5,7 @@ class Test extends haxe.unit.TestRunner
 		#if !macro
 		var r = new haxe.unit.TestRunner();
 		r.add(new staticdata.ValueTest());
-		r.add(new staticdata.DataEnumTest());
+		r.add(new staticdata.DataModelTest());
 		r.run();
 		#end
 	}

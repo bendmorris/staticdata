@@ -77,23 +77,23 @@ class DataContext
 	public static function getIndexType(field:Field):ComplexType
 	{
 		var ct = getFieldType(field);
-		var t = TypeTools.followWithAbstracts(ComplexTypeTools.toType(ct));
+		var t = TypeTools.follow(ComplexTypeTools.toType(ct));
 		switch (t)
 		{
 			case TInst(t, params):
-				switch (t.get().module)
+				switch (t.get().name)
 				{
-					case "haxe.ds.StringMap": return macro : String;
-					case "haxe.ds.IntMap": return macro : Int;
+					case "StringMap", "haxe.ds.StringMap": return macro : String;
+					case "IntMap", "haxe.ds.IntMap": return macro : Int;
 				}
 			case TAbstract(t, params):
-				switch (t.get().module)
+				switch (t.get().name)
 				{
 					case "Map": return TypeTools.toComplexType(params[0]);
 				}
 			default: {}
 		}
-		throw "Unsupported index field type: " + t;
+		throw 'Unsupported index field type for field ${field.name}: $t';
 	}
 
 	public static function getFieldDefaultValue(field:Field):Expr
