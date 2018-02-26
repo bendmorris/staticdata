@@ -2,7 +2,8 @@
 change at runtime, with one or more variants that share a common schema of 
 associated information. `staticdata` creates Haxe enum abstracts for each type 
 of data and makes it easy to access their associated attributes in a type-safe 
-way.
+way. Parsing/code generation and validation is done at compile time, so it's 
+both fast and safe.
 
 ## Getting started
 
@@ -27,7 +28,7 @@ abstract DogBreed(String) from String to String
 
 ### Data
 
-The corresponding XML file:
+The corresponding XML file lists one or more variants for this type:
 
 ```xml
 <dogs>
@@ -55,15 +56,18 @@ breed:
 
 ### Access
 
-Now you can access these values as @:enum abstracts in your code, with the 
-members defined in the abstract:
+Now you can access these variants and their attributes easily from your code:
 
-```
+```haxe
 var value1 = DogBreed.Husky;
 trace(value1.name);
 trace(value1.synonyms);
 trace(value1.stats['strength']);
 ```
+
+As these are Haxe abstract types, field access, helper methods, etc. exist at 
+compile time only; at runtime, they're indistinguishable from the primitive 
+they're based on (in this case a String.)
 
 ## Details
 
@@ -89,6 +93,27 @@ fruit:
 - id: apple
   value: 1
   color: 0xff0000
+```
+
+### Ordering
+
+To get all variants in the order they were specified in the data, use 
+`MyDataClass.ordered`:
+
+```haxe
+@:build(staticdata.macros.DataEnum.build(["data/fruit.yaml"], "fruit"))
+@:enum
+abstract FruitType(Int) from Int to Int
+{
+    @:a public var name:String = "???";
+    @:a public var color:UInt;
+
+    public static function display() {
+        for (fruit in ordered) {
+            trace(fruit.name);
+        }
+    }
+}
 ```
 
 ### IDs
@@ -136,7 +161,14 @@ the default if that's what you want.
 - Primitivies: `String`, `Int`, `Float`, `Bool`
 - Arrays of supported values (specify with a YAML list or multiple XML child nodes)
 - StringMap (specify with a nested YAML object or XML child nodes; see above)
-- Custom types; use "``" to inject Haxe code directly as values
+- Custom types; use Strings surrounded by "``" to inject Haxe expressions directly as values:
+
+```yaml
+birds:
+- id: spotted_eagle
+  value: 1
+  name: "`LocalizationHelper.localize('Spotted Eagle')`"
+```
 
 ### Links between other models
 
@@ -180,10 +212,11 @@ colors:
 ```
 
 When the code for the `FruitType` variants is generated, the value for 
-`FruitType.Apple.Color` will be `[FruitColor.Red, FruitColor.Yellow]`.
+`FruitType.Apple.colors` will be `[FruitColor.Red, FruitColor.Yellow]`.
 
-Currently there's no way to disable this inference, but such an option could be 
-added in the future.
+For strings which should be converted to an @:enum but are *not* staticdata 
+types, you can bypass this inference by specifying the field value as a string 
+containing a Haxe expression, e.g. "`'yellow'`".
 
 ### Field access
 
