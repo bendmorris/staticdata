@@ -228,3 +228,40 @@ The generated code to access variant attributes may use one of three strategies:
 
 `staticdata` will use heuristics based on field type and number of variants to 
 choose which one to use.
+
+### Hierarchical/nested models
+
+Nested models can be supported by specifying an attribute's data path using 
+either dots (for children) or carets (for parents), as follows:
+
+```haxe
+@:build(staticdata.DataEnum.build(["data/upgrades.yaml"], "category"))
+@:enum
+abstract UpgradeCategory(String) from String to String
+{
+    @:a public var icon:Null<String> = null;
+    @:a(upgrades.id) public var upgrades:Array<UpgradeType>;
+}
+
+@:build(staticdata.DataEnum.build(["data/upgrades.yaml"], "category.upgrades"))
+@:enum
+abstract UpgradeType(String) from String to String
+{
+    @:a("^id") public var category:UpgradeType;
+    @:a public var name:String;
+    @:a public var cost:Int = 0;
+}
+```
+
+```yaml
+category:
+- id: fighting
+  icon: "sword.png"
+  upgrades:
+  - id: fighting_atk
+    name: "Attack power"
+    cost: 5
+  - id: fighting_def
+    name: "Defense power"
+    cost: 4
+```
