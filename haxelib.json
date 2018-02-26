@@ -5,6 +5,7 @@
 	"tags": [],
 	"description": "Convert structured data to Haxe enum abstracts at compile time.",
 	"version": "0.1.0",
+	"classPath": "src",
 	"releasenote": "Initial release.",
 	"contributors": ["bendmorris"]
 }

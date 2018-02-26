@@ -1,5 +1,7 @@
 -main Test
+-cp src
 -cp tests
 -lib yaml
+-lib hxunit
 --no-inline
 -neko test.n

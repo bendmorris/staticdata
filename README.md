@@ -1,16 +1,18 @@
-`staticdata` is a library that manages "static data" - sets of data that don't
-change at runtime, with one or more variants that share a common schema of
-associated information. `staticdata` creates Haxe enum abstracts for each type
-of data and makes it easy to access their associated attributes in a type-safe
-way. Parsing/code generation and validation is done at compile time, so it's
-both fast and safe.
+`staticdata` is a library that manages "static data" - sets of data that don't 
+change at runtime, with one or more variants that share a common schema of 
+associated information. This can include: levels, upgrades, enemies, abilities, 
+items...
+
+`staticdata` creates Haxe enum abstracts for each type of data and makes it easy 
+to access their associated attributes in a type-safe way. Parsing/code 
+generation and validation is done at compile time, so it's both fast and safe.
 
 ## Getting started
 
 ### Schema
 
 To use `staticdata`, define the structure of your data in an abstract by using
-the @:a metadata to mark data fields:
+the `@:a` metadata to mark data fields:
 
 ```haxe
 @:build(staticdata.DataModel.build(["data/dogs.xml"], "breed"))
