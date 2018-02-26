@@ -1,6 +1,6 @@
 {
-	"name": "hxdata",
-	"url" : "https://github.com/bendmorris/hxdata",
+	"name": "staticdata",
+	"url" : "https://github.com/bendmorris/staticdata",
 	"license": "MIT",
 	"tags": [],
 	"description": "Convert structured data to Haxe enum abstracts at compile time.",
