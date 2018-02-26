@@ -6,6 +6,7 @@ class Test extends haxe.unit.TestRunner
 		var r = new haxe.unit.TestRunner();
 		r.add(new staticdata.ValueTest());
 		r.add(new staticdata.DataModelTest());
+		r.add(new staticdata.ExamplesTest());
 		r.run();
 		#end
 	}

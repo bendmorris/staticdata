@@ -1,0 +1,14 @@
+fruit:
+- id: apple
+  name: "Red Delicious Apple"
+  colors:
+  - red
+  - yellow
+
+colors:
+- id: red
+  name: "Apple Red"
+  value: 0xff0000
+- id: yellow
+  name: "Golden Yellow"
+  value: 0xd4aa00

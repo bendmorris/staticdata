@@ -1,0 +1,10 @@
+category:
+- id: fighting
+  icon: "sword.png"
+  upgrades:
+  - id: fighting_atk
+    name: "Attack power"
+    cost: 5
+  - id: fighting_def
+    name: "Defense power"
+    cost: 4

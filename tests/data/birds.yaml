@@ -1,0 +1,4 @@
+birds:
+- id: spotted_eagle
+  value: 1
+  name: "Spotted Eagle"

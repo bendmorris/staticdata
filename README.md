@@ -13,11 +13,11 @@ To use `staticdata`, define the structure of your data in an abstract by using
 the @:a metadata to mark data fields:
 
 ```haxe
-@:build(staticdata.macros.DataModel.build(["data/dogs.xml"], "breed"))
+@:build(staticdata.DataModel.build(["data/dogs.xml"], "breed"))
 @:enum
 abstract DogBreed(String) from String to String
 {
-    @:index(name) public static byColor:Map<UInt, Array<DogBreed>>;
+    @:index(color) public static var byColor:Map<UInt, Array<DogBreed>>;
 
     @:a public var name:String = "???";
     @:a(synonym) public var synonyms:Array<String>;
@@ -79,7 +79,7 @@ specified. Otherwise, you can specify the variant's runtime value using the
 `value` field:
 
 ```haxe
-@:build(staticdata.macros.DataModel.build(["data/fruit.yaml"], "fruit"))
+@:build(staticdata.DataModel.build(["data/fruit.yaml"], "fruit"))
 @:enum
 abstract FruitType(Int) from Int to Int
 {
@@ -101,7 +101,7 @@ To get all variants in the order they were specified in the data, use
 `MyDataClass.ordered`:
 
 ```haxe
-@:build(staticdata.macros.DataModel.build(["data/fruit.yaml"], "fruit"))
+@:build(staticdata.DataModel.build(["data/fruit.yaml"], "fruit"))
 @:enum
 abstract FruitType(Int) from Int to Int
 {
@@ -123,7 +123,7 @@ data or in code. `staticdata` uses a convention of "snake_case" identifiers in
 data that correspond to TitleCase enum variants in code:
 
 ```haxe
-@:build(staticdata.macros.DataModel.build(["data/bird.yaml"], "birds"))
+@:build(staticdata.DataModel.build(["data/birds.yaml"], "birds"))
 @:enum
 abstract BirdType(Int) from Int to Int
 {
@@ -158,7 +158,7 @@ the default if that's what you want.
 
 `staticdata` supports the following types of data:
 
-- Primitivies: `String`, `Int`, `Float`, `Bool`
+- Primitives: `String`, `Int`, `Float`, `Bool`
 - Arrays of supported values (specify with a YAML list or multiple XML child nodes)
 - StringMap (specify with a nested YAML object or XML child nodes; see above)
 - Custom types; use Strings surrounded by "``" to inject Haxe expressions directly as values:
@@ -178,7 +178,7 @@ it follows the ID convention above and will try to refer to it in a type-safe
 way:
 
 ```haxe
-@:build(staticdata.macros.DataModel.build(["data/bird.yaml"], "fruit"))
+@:build(staticdata.DataModel.build(["data/fruit.yaml"], "fruit"))
 @:enum
 abstract FruitType(String) from String to String
 {
@@ -186,7 +186,7 @@ abstract FruitType(String) from String to String
     @:a public var colors:Array<FruitColor>;
 }
 
-@:build(staticdata.macros.DataModel.build(["data/fruit.yaml"], "colors"))
+@:build(staticdata.DataModel.build(["data/fruit.yaml"], "colors"))
 @:enum
 abstract FruitColor(UInt) from UInt to UInt
 {
@@ -247,7 +247,7 @@ abstract UpgradeCategory(String) from String to String
 @:enum
 abstract UpgradeType(String) from String to String
 {
-    @:a("^id") public var category:UpgradeType;
+    @:a("^id") public var category:UpgradeCategory;
     @:a public var name:String;
     @:a public var cost:Int = 0;
 }

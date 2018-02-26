@@ -1,0 +1,8 @@
+breed:
+  - id: husky
+    name: "Siberian Husky"
+    color: 0xc0c0c0
+    synonym: ["Giant Wolfdog", "Big Fluffy Guy"]
+    stat:
+      strength: 10
+      obedience: 1
