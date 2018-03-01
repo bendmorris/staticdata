@@ -9,6 +9,18 @@ generation and validation is done at compile time, so it's both fast and safe.
 
 ## Getting started
 
+### Setup
+
+Install `staticdata` from git to get started.
+
+By default `staticdata` supports XML. To add yaml support:
+
+```
+haxelib install yaml
+```
+
+Include the yaml library when compiling your project.
+
 ### Schema
 
 To use `staticdata`, define the structure of your data in an abstract by using
