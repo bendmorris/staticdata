@@ -267,3 +267,27 @@ category:
     name: "Defense power"
     cost: 4
 ```
+
+### Indexes
+
+staticdata can create indexes for any field at compile time, which create a 
+reverse lookup of value -> set of variants with that value. To create an index 
+use the `@:index` metadata with the name of the field on a static variable with 
+the appropriate Map type:
+
+```haxe
+@:build(staticdata.DataModel.build(["data/dogs.xml"], "breed"))
+@:enum
+abstract DogBreed(String) from String to String
+{
+    @:index(color) public static var byColor:Map<UInt, Array<DogBreed>>;
+
+    @:a public var color:UInt;
+}
+```
+
+The map will be populated automatically:
+
+```haxe
+trace(DogBreed.byColor[0xffffff]);
+```
