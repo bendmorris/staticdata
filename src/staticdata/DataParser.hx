@@ -49,9 +49,11 @@ class DataParser<T> implements IDataParser
 		switch (t)
 		{
 			case TAbstract(a, params):
-				if (a.toString() == "Map")
+				switch (a.toString())
 				{
-					ptKey = params[0];
+					case "Map", "haxe.ds.Map":
+						ptKey = params[0];
+					default: {}
 				}
 			default: {}
 		}

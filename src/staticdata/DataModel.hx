@@ -30,7 +30,14 @@ class DataModel
 		{
 			if (filename.endsWith(extension))
 			{
-				return parsers[extension].parse(dataContext, filename);
+				try
+				{
+					return parsers[extension].parse(dataContext, filename);
+				}
+				catch (e:Dynamic)
+				{
+					throw 'Parse error in $filename: $e';
+				}
 			}
 		}
 		throw 'Unrecognized file format: $filename';

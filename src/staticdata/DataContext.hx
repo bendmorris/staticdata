@@ -89,7 +89,7 @@ class DataContext
 			case TAbstract(t, params):
 				switch (t.get().name)
 				{
-					case "Map": return TypeTools.toComplexType(params[0]);
+					case "Map", "haxe.ds.Map": return TypeTools.toComplexType(params[0]);
 				}
 			default: {}
 		}
